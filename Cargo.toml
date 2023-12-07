@@ -3,12 +3,9 @@ name = "kfs-1"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "kfs-1"
-path = "src/main.rs"
-
 [profile.dev]
 panic = "abort"
 
 [profile.release]
-panic = "abort"
+panic = "abort"  # Avoid unwinding
+lto = true       # Enable Link Time Optimization
