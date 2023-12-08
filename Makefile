@@ -3,7 +3,8 @@ RELEASE_TARGET=target/i386-unknown-none/release
 all: release
 
 release:
-	cargo build --release --target=i386-unknown-none.json
+	rm isofiles/kfs.iso
+	cargo build --release
 	mkdir -p build
 	nasm -f elf32 src/boot/boot.asm -o build/boot.o
 	nasm -f elf32 src/boot/multiboot_header.asm -o build/multiboot_header.o
