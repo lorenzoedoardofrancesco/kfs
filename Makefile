@@ -3,7 +3,7 @@ RELEASE_TARGET=target/i386-unknown-none/release
 all: release
 
 release:
-	rm isofiles/kfs.iso
+	rm -f isofiles/kfs.iso
 	cargo build --release
 	mkdir -p build
 	nasm -f elf32 src/boot/boot.asm -o build/boot.o
