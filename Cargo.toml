@@ -3,9 +3,15 @@ name = "kfs-1"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["staticlib"]
+
+[build]
+target = "i386-unknown-none"
+
 [profile.dev]
 panic = "abort"
 
 [profile.release]
-panic = "abort"  # Avoid unwinding
-lto = true       # Enable Link Time Optimization
+panic = "abort"
+lto = true
