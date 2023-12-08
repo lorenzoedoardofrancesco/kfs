@@ -6,12 +6,8 @@ edition = "2021"
 [lib]
 crate-type = ["staticlib"]
 
-[build]
-target = "i386-unknown-none"
-
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
-lto = true

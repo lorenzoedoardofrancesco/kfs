@@ -3,13 +3,13 @@ RELEASE_TARGET=target/i386-unknown-none/release
 all: release
 
 release:
-	rm -f isofiles/kfs.iso
+	rm -f kfs.iso
 	cargo build --release
 	mkdir -p build
 	nasm -f elf32 src/boot/boot.asm -o build/boot.o
 	nasm -f elf32 src/boot/multiboot_header.asm -o build/multiboot_header.o
 	ld -m elf_i386 -n -o isofiles/boot/kfs.bin -T linker.ld build/multiboot_header.o build/boot.o $(RELEASE_TARGET)/libkfs_1.a
-	grub-mkrescue -o isofiles/kfs.iso isofiles
+	grub-mkrescue -o kfs.iso isofiles
 
 clean:
 	cargo clean
