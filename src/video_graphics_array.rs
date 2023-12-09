@@ -1,15 +1,23 @@
 use crate::io::outb;
+use core::fmt;
+use crate::volatile::Volatile;
 
 const VGA_BUFFER_ADDRESS: usize = 0xb8000;
 const VGA_COLUMNS: usize = 80;
 const VGA_ROWS: usize = 25;
-const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS;
+const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS * 2;
 const VGA_LAST_LINE: usize = VGA_ROWS - 1;
 
 const VGA_CTRL_REGISTER: u16 = 0x3d4;
 const VGA_DATA_REGISTER: u16 = 0x3d5;
 static mut CURSOR_X: usize = 0;
 static mut CURSOR_Y: usize = 0;
+
+pub static WRITER: Writer = Writer {
+    column_position: 0,
+    color: Color::new(ColorCode::Green, ColorCode::Black),
+    buffer: unsafe { &mut *(0xb8000 as *mut VgaBuffer) },
+};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,7 +60,7 @@ struct ScreenChar {
 
 #[repr(transparent)]
 struct VgaBuffer {
-    chars: [[ScreenChar; VGA_COLUMNS]; VGA_ROWS],
+    chars: [[Volatile<ScreenChar>; VGA_COLUMNS]; VGA_ROWS],
 }
 
 pub struct Writer {
@@ -70,43 +78,56 @@ impl Writer {
                     self.new_line();
                 }
 
-                self.buffer.chars[VGA_LAST_LINE][self.column_position] = ScreenChar {
+                self.buffer.chars[VGA_LAST_LINE][self.column_position].write(ScreenChar {
                     ascii_character: byte,
                     color: self.color,
-                };
+                });
             }
         }
     }
 
-	pub fn write_string(&mut self, s: &str) {
-		for byte in s.bytes() {
-			match byte {
-				0x20..=0x7e | b'\n' => self.write_byte(byte),
-				_ => self.write_byte(0xfe),
-			}
-		}
-	}
+    pub fn write_string(&mut self, s: &str) {
+        for byte in s.bytes() {
+            match byte {
+                0x20..=0x7e | b'\n' => self.write_byte(byte),
+                _ => self.write_byte(0xfe),
+            }
+        }
+    }
 
-	
     fn new_line(&mut self) {
-        /*extern "C" {
-            fn memcpy(dest: *mut usize, src: *const usize, n: usize) -> *mut u8;
+        for row in 1..VGA_ROWS {
+            for column in 0..VGA_COLUMNS {
+                let character = self.buffer.chars[row][column].read();
+                self.buffer.chars[row - 1][column].write(character);
+            }
         }
-        unsafe {
-            memcpy(VGA_BUFFER_ADDRESS, VGA_BUFFER_ADDRESS + 0x50, VGA_BUFFER_SIZE - 0x50);
-        }
-        self.clear_row(VGA_LAST_LINE);*/
-    } 
-/*
+        self.clear_row(VGA_LAST_LINE);
+        self.column_position = 0;
+    }
+
     fn clear_row(&mut self, row: usize) {
         let blank = ScreenChar {
             ascii_character: b' ',
             color: self.color,
         };
-        for col in 0..VGA_COLUMNS - 1 {
-            self.buffer.chars[row][col] = blank;
+        for column in 0..VGA_COLUMNS {
+            self.buffer.chars[row][column].write(blank);
         }
-    } */
+    }
+
+    fn clear_screen(&mut self) {
+        for row in 0..VGA_ROWS {
+            self.clear_row(row);
+        }
+    }
+}
+
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
 }
 
 /*
