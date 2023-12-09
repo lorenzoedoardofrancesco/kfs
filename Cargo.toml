@@ -9,6 +9,10 @@ crate-type = ["staticlib"]
 [dependencies]
 volatile = "0.5.1"
 
+[dependencies.lazy_static]
+version = "1.4.0"
+features = ["spin_no_std"]
+
 [profile.dev]
 panic = "abort"
 

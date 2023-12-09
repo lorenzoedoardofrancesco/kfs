@@ -1,6 +1,7 @@
 use crate::io::outb;
 use core::fmt;
-use crate::volatile::Volatile;
+use volatile::VolatilePtr;
+use lazy_static::lazy_static;
 
 const VGA_BUFFER_ADDRESS: usize = 0xb8000;
 const VGA_COLUMNS: usize = 80;
@@ -13,11 +14,18 @@ const VGA_DATA_REGISTER: u16 = 0x3d5;
 static mut CURSOR_X: usize = 0;
 static mut CURSOR_Y: usize = 0;
 
-pub static WRITER: Writer = Writer {
-    column_position: 0,
-    color: Color::new(ColorCode::Green, ColorCode::Black),
-    buffer: unsafe { &mut *(0xb8000 as *mut VgaBuffer) },
-};
+
+unsafe impl Send for Writer {}
+unsafe impl Sync for Writer {}
+lazy_static! {
+    pub static ref WRITER: Writer = Writer {
+        column_position: 0,
+        color: Color::new(ColorCode::Green, ColorCode::Black),
+        buffer: unsafe {
+            &mut *(0xb8000 as *mut VgaBuffer)
+        },
+    };
+}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,7 +68,7 @@ struct ScreenChar {
 
 #[repr(transparent)]
 struct VgaBuffer {
-    chars: [[Volatile<ScreenChar>; VGA_COLUMNS]; VGA_ROWS],
+    chars: [[VolatilePtr<'static, ScreenChar>; VGA_COLUMNS]; VGA_ROWS],
 }
 
 pub struct Writer {
