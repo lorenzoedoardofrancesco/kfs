@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod librs;
 mod video_graphics_array;
 mod io;
 
@@ -8,8 +9,8 @@ use core::panic::PanicInfo;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    loop {
-    }
+    println!("Hello World{}", "!");
+	loop {}
 }
 
 #[panic_handler]

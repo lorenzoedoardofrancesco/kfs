@@ -1,7 +1,7 @@
-use crate::io::outb;
 use core::fmt;
-use volatile::VolatilePtr;
+use crate::io::outb;
 use lazy_static::lazy_static;
+use spin::Mutex;
 
 const VGA_BUFFER_ADDRESS: usize = 0xb8000;
 const VGA_COLUMNS: usize = 80;
@@ -14,17 +14,14 @@ const VGA_DATA_REGISTER: u16 = 0x3d5;
 static mut CURSOR_X: usize = 0;
 static mut CURSOR_Y: usize = 0;
 
-
-unsafe impl Send for Writer {}
-unsafe impl Sync for Writer {}
 lazy_static! {
-    pub static ref WRITER: Writer = Writer {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
         color: Color::new(ColorCode::Green, ColorCode::Black),
         buffer: unsafe {
-            &mut *(0xb8000 as *mut VgaBuffer)
+            &mut *(VGA_BUFFER_ADDRESS as *mut VgaBuffer)
         },
-    };
+    });
 }
 
 #[allow(dead_code)]
@@ -68,7 +65,7 @@ struct ScreenChar {
 
 #[repr(transparent)]
 struct VgaBuffer {
-    chars: [[VolatilePtr<'static, ScreenChar>; VGA_COLUMNS]; VGA_ROWS],
+    chars: [[ScreenChar; VGA_COLUMNS]; VGA_ROWS],
 }
 
 pub struct Writer {
@@ -77,7 +74,18 @@ pub struct Writer {
     buffer: &'static mut VgaBuffer,
 }
 
+
+
 impl Writer {
+	fn read(&self, row: usize, column: usize) -> ScreenChar {
+        self.buffer.chars[row][column]
+    }
+
+    fn write(&mut self, character: ScreenChar) {
+        self.buffer.chars[VGA_LAST_LINE][self.column_position] = character;
+		self.column_position += 1;
+    }
+
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
@@ -86,10 +94,11 @@ impl Writer {
                     self.new_line();
                 }
 
-                self.buffer.chars[VGA_LAST_LINE][self.column_position].write(ScreenChar {
+                self.write(ScreenChar {
                     ascii_character: byte,
                     color: self.color,
                 });
+
             }
         }
     }
