@@ -59,6 +59,13 @@ check-checksums:
 		rm $(CHECKSUM_FILE).new; \
 	fi
 
+run:
+	@if [ -f kfs.iso ]; then \
+		qemu-system-i386 -boot order=c kfs.iso; \
+	else \
+		echo "No kfs.iso found, please run 'make' first."; \
+	fi
+
 clean:
 	@if [ ! -z "$$(docker ps -aq -f name=^$(CONTAINER_NAME)$$)" ]; then \
 		docker stop $(CONTAINER_NAME); \
