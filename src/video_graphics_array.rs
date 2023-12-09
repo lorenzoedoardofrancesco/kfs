@@ -11,13 +11,11 @@ const VGA_LAST_LINE: usize = VGA_ROWS - 1;
 
 const VGA_CTRL_REGISTER: u16 = 0x3d4;
 const VGA_DATA_REGISTER: u16 = 0x3d5;
-static mut CURSOR_X: usize = 0;
-static mut CURSOR_Y: usize = 0;
 
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
-        color: Color::new(ColorCode::Green, ColorCode::Black),
+        color: Color::new(ColorCode::Yellow, ColorCode::Red),
         buffer: unsafe {
             &mut *(VGA_BUFFER_ADDRESS as *mut VgaBuffer)
         },
@@ -74,18 +72,17 @@ pub struct Writer {
     buffer: &'static mut VgaBuffer,
 }
 
+impl VgaBuffer {
+    fn read(&self, row: usize, column: usize) -> ScreenChar {
+        self.chars[row][column]
+    }
 
+    fn write(&mut self, character: ScreenChar, row: usize, column: usize) {
+        self.chars[row][column] = character;
+    }
+}
 
 impl Writer {
-	fn read(&self, row: usize, column: usize) -> ScreenChar {
-        self.buffer.chars[row][column]
-    }
-
-    fn write(&mut self, character: ScreenChar) {
-        self.buffer.chars[VGA_LAST_LINE][self.column_position] = character;
-		self.column_position += 1;
-    }
-
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
@@ -94,11 +91,16 @@ impl Writer {
                     self.new_line();
                 }
 
-                self.write(ScreenChar {
-                    ascii_character: byte,
-                    color: self.color,
-                });
+                self.buffer.write(
+                    ScreenChar {
+                        ascii_character: byte,
+                        color: self.color,
+                    },
+                    VGA_LAST_LINE,
+                    self.column_position
+                );
 
+                self.column_position += 1;
             }
         }
     }
@@ -110,17 +112,17 @@ impl Writer {
                 _ => self.write_byte(0xfe),
             }
         }
+        self.update_cursor(VGA_LAST_LINE, self.column_position);
     }
 
     fn new_line(&mut self) {
         for row in 1..VGA_ROWS {
             for column in 0..VGA_COLUMNS {
-                let character = self.buffer.chars[row][column].read();
-                self.buffer.chars[row - 1][column].write(character);
+                let character = self.buffer.read(row, column);
+                self.buffer.write(character, row - 1, column);
             }
         }
         self.clear_row(VGA_LAST_LINE);
-        self.column_position = 0;
     }
 
     fn clear_row(&mut self, row: usize) {
@@ -129,13 +131,26 @@ impl Writer {
             color: self.color,
         };
         for column in 0..VGA_COLUMNS {
-            self.buffer.chars[row][column].write(blank);
+            self.buffer.write(blank, row, column);
         }
+        self.column_position = 0;
     }
 
-    fn clear_screen(&mut self) {
+    pub fn clear_screen(&mut self) {
         for row in 0..VGA_ROWS {
             self.clear_row(row);
+        }
+        self.update_cursor(VGA_LAST_LINE, self.column_position);
+    }
+
+    fn update_cursor(&mut self, row: usize, column: usize) {
+        let position: u16 = unsafe { (row * VGA_COLUMNS + column) as u16 };
+
+        unsafe {
+            outb(VGA_CTRL_REGISTER, 0x0f);
+            outb(VGA_DATA_REGISTER, (position & 0xff) as u8);
+            outb(VGA_CTRL_REGISTER, 0x0e);
+            outb(VGA_DATA_REGISTER, ((position >> 8) & 0xff) as u8);
         }
     }
 }
@@ -146,25 +161,3 @@ impl fmt::Write for Writer {
         Ok(())
     }
 }
-
-/*
-
-fn reset_cursor() {
-    unsafe {
-        CURSOR_X = 0;
-        CURSOR_Y = 0;
-        update_cursor();
-    }
-}
-
-pub fn update_cursor() {
-    let position: u16 = unsafe { (CURSOR_Y * VGA_COLUMNS + CURSOR_X) as u16 };
-
-    unsafe {
-        outb(VGA_CTRL_REGISTER, 0x0f);
-        outb(VGA_DATA_REGISTER, (position & 0xff) as u8);
-        outb(VGA_CTRL_REGISTER, 0x0e);
-        outb(VGA_DATA_REGISTER, ((position >> 8) & 0xff) as u8);
-    }
-}
-*/
