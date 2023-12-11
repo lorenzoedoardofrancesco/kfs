@@ -1,6 +1,5 @@
 Pour Alix:
 
-println!("{}", { println!("inner"); "outer" });
 Trouver comment ne pas mettre des mods et des use en chaque fichier
 
 
