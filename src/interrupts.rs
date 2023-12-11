@@ -1,6 +1,9 @@
 use core::arch::asm;
+use crate::io::inb;
 use crate::pic8259::ChainedPics;
 use spin::Mutex;
+use crate::video_graphics_array::WRITER;
+
 
 pub const PIC_1_OFFSET: u8 = 20;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
@@ -17,15 +20,29 @@ pub enum InterruptIndex {
 }
 
 impl InterruptIndex {
-	fn as_u8(self) -> u8 {
+	pub fn as_u8(self) -> u8 {
 		self as u8
 	}
-	
-	fn as_usize(self) -> usize {
+
+	pub fn as_usize(self) -> usize {
 		usize::from(self.as_u8())
 	}
 }
 
+pub extern "C" fn timer_interrupt() {
+	WRITER.lock().write_byte(b'.');
+	unsafe {
+		PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+	}
+}
+
+pub extern "C" fn keyboard_interrupt() {
+	let scancode: u8 = unsafe { inb(0x60) };
+	WRITER.lock().write_byte(b'X');
+	unsafe {
+		PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+	}
+}
 
 pub fn pics_init() {
 	unsafe {

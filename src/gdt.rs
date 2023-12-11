@@ -48,8 +48,8 @@ impl GDT_Entry {
 // https://www.independent-software.com/operating-system-development-protected-mode-global-descriptor-table.html
 // http://www.osdever.net/bkerndev/Docs/gdt.htm
 
-#[link_section = ".gdt"]
 lazy_static! {
+	#[link_section = ".gdt"]
 	static ref GDT: [GDT_Entry; 7] = [
 		GDT_Entry::new(0, 0, 0, 0), // null descriptor segment
 		GDT_Entry::new(0xfffff, 0, 0x9a, 0xcf), // kernel mode code segment

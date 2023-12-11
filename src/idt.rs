@@ -1,6 +1,6 @@
 use core::arch::asm;
 use lazy_static::lazy_static;
-use crate::interrupts::InterruptIndex;
+use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt };
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
@@ -108,8 +108,8 @@ extern "C" fn virtualization_exception() {
 	panic!("Virtualization exception");
 }
 
-#[link_section = ".idt"]
 lazy_static! {
+	#[link_section = ".idt"]
 	static ref IDT: [IDT_Descriptor; 256] = {
 		let mut idt = [IDT_Descriptor::new(0, 0, 0); 256];
 
@@ -134,8 +134,16 @@ lazy_static! {
 		idt[18] = IDT_Descriptor::new(machine_check as u32, 0x08, 0x8f);
 		idt[19] = IDT_Descriptor::new(simd_floating_point_exception as u32, 0x08, 0x8e);
 		idt[20] = IDT_Descriptor::new(virtualization_exception as u32, 0x08, 0x8f);
-		//	idt[InterruptIndex::Timer.as_usize()] = IDT_Descriptor::new(timer_interrupt as u32, 0x08, 0x8e);
-		//	idt[InterruptIndex::Keyboard.as_usize()] = IDT_Descriptor::new(keyboard_interrupt as u32, 0x08, 0x8e);
+		idt[InterruptIndex::Timer.as_usize()] = IDT_Descriptor::new(
+			timer_interrupt as u32,
+			0x08,
+			0x8e
+		);
+		idt[InterruptIndex::Keyboard.as_usize()] = IDT_Descriptor::new(
+			keyboard_interrupt as u32,
+			0x08,
+			0x8e
+		);
 
 		idt
 	};

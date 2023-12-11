@@ -38,4 +38,6 @@ fn panic(info: &PanicInfo) -> ! {
 fn init() {
 	gdt::gdt_init();
 	idt::idt_init();
+	interrupts::pics_init();
+	interrupts::enable();
 }
