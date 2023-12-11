@@ -1,6 +1,10 @@
 ENTRY(start)
 
 SECTIONS {
+	.gdt 0x00000800 : {
+		*(.gdt)
+	}
+
     . = 1M;
 
     .boot :

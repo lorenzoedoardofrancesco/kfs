@@ -48,6 +48,7 @@ impl GDT_Entry {
 // https://www.independent-software.com/operating-system-development-protected-mode-global-descriptor-table.html
 // http://www.osdever.net/bkerndev/Docs/gdt.htm
 
+#[link_section = ".gdt"]
 lazy_static! {
     static ref GDT: [GDT_Entry; 7] = [
         GDT_Entry::new(0, 0, 0, 0), // null descriptor segment
@@ -81,28 +82,27 @@ unsafe fn load_gdt() {
 
 // https://wiki.osdev.org/Segmentation#Real_mode
 
-unsafe fn load_kernel_code_segment() {
+unsafe fn load_segment_registers() {
     asm!(
-        "push 0x08", // Selector for code segment
-        "push offset 1f", // Offset of next instruction
-        "retf", // Jump to next instruction
-        "1:", // Label for the next instruction
-        // Update data segment registers
-        "mov ax, 0x10", // Selector for data segment
+        "push 0x08",
+        "lea eax, [1f]",
+        "push eax",
+        "retf",
+        "1:",
+        "mov ax, 0x10",
         "mov ds, ax",
         "mov es, ax",
         "mov fs, ax",
         "mov gs, ax",
-
-        // Update stack segment register
-        "mov ax, 0x18", // Selector for stack segment
-        "mov ss, ax"
+        "mov ax, 0x18",
+        "mov ss, ax",
+        options(preserves_flags)
     );
 }
 
 pub fn gdt_init() {
-	unsafe {
-		load_gdt();
-        load_kernel_code_segment();
+    unsafe {
+        load_gdt();
+        load_segment_registers();
     }
 }

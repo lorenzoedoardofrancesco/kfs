@@ -8,15 +8,21 @@ mod librs;
 mod pic8259;
 mod video_graphics_array;
 
-use core::panic::PanicInfo; 
+use core::panic::PanicInfo;
 use librs::clear;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-	gdt::gdt_init();
-     clear();
+    gdt::gdt_init();
+    clear();
     println!("Grosse ****");
     println!("****");
+	let test1 = 0xABCDEF01 as u32;
+    let test2 = 0x23456789 as u32;
+	let test3 = 0x98765432 as u32;
+	let test4 = 0x10FEDCBA as u32;
+	println!("test1: {:x}, test2: {:x}, test3: {:x}, test4: {:x}", test1, test2, test3, test4);
+	librs::print_stack();
     loop {
     }
 }
@@ -29,6 +35,8 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 pub fn init() {
-    unsafe { interrupts::PICS.lock().initialize() }
-	interrupts::enable();
+    unsafe {
+        interrupts::PICS.lock().initialize();
+    }
+    interrupts::enable();
 }
