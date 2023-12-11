@@ -30,9 +30,8 @@ lazy_static! {
         let mut idt_entries = [DEFAULT_IDT_DESCRIPTOR; 255];
         
         // Override specific entries if needed
-        idt_entries[0] = 
-        idt_entries[1] = IdtDescriptor::new(0xfffff, 0, 0x9a, 0xcf);
-        idt_entries[2] = IdtDescriptor::new(0xfffff, 0, 0x92, 0xcf);
+        idt_entries[0] = IdtDescriptor::new(0x08, 0, 0x8e)
+        idt_entries[1] = IdtDescriptor::new(0x08, 0, 0x8e)
         
         idt_entries
     };
