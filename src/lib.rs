@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod gdt;
 mod interrupts;
 mod io;
 mod librs;
@@ -12,9 +13,9 @@ use librs::clear;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    clear();
+	gdt::gdt_init();
+     clear();
     println!("Grosse ****");
-	init();
     println!("****");
     loop {
     }
