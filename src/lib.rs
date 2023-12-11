@@ -17,12 +17,12 @@ pub extern "C" fn _start() -> ! {
     clear();
     println!("Grosse ****");
     println!("****");
-	let test1 = 0xABCDEF01 as u32;
+    let test1 = 0xabcdef01 as u32;
     let test2 = 0x23456789 as u32;
-	let test3 = 0x98765432 as u32;
-	let test4 = 0x10FEDCBA as u32;
-	println!("test1: {:x}, test2: {:x}, test3: {:x}, test4: {:x}", test1, test2, test3, test4);
-	librs::print_stack();
+    let test3 = 0x98765432 as u32;
+    let test4 = 0x10fedcba as u32;
+    println!("test1: {:x}, test2: {:x}, test3: {:x}, test4: {:x}", test1, test2, test3, test4);
+    librs::print_stack();
     loop {
     }
 }

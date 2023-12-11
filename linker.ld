@@ -1,6 +1,10 @@
 ENTRY(start)
 
 SECTIONS {
+	.idt 0x00000000 : {
+		*(.idt)
+	}
+
 	.gdt 0x00000800 : {
 		*(.gdt)
 	}
