@@ -1,6 +1,6 @@
 use core::arch::asm;
 use lazy_static::lazy_static;
-use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt };
+use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt, serial_println };
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
@@ -25,87 +25,87 @@ impl IDT_Descriptor {
 }
 
 extern "C" fn divide_by_zero() {
-	panic!("Divide by zero");
+	serial_println("Divide by zero");
 }
 
 extern "C" fn debug() {
-	panic!("Debug");
+	serial_println("Debug");
 }
 
 extern "C" fn non_maskable_interrupt() {
-	panic!("Non-maskable interrupt");
+	serial_println("Non-maskable interrupt");
 }
 
 extern "C" fn breakpoint() {
-	panic!("Breakpoint");
+	serial_println("Breakpoint");
 }
 
 extern "C" fn overflow() {
-	panic!("Overflow");
+	serial_println("Overflow");
 }
 
 extern "C" fn bound_range_exceeded() {
-	panic!("Bound range exceeded");
+	serial_println("Bound range exceeded");
 }
 
 extern "C" fn invalid_opcode() {
-	panic!("Invalid opcode");
+	serial_println("Invalid opcode");
 }
 
 extern "C" fn coprocessor_not_available() {
-	panic!("Coprocessor not available");
+	serial_println("Coprocessor not available");
 }
 
 extern "C" fn double_fault() {
-	panic!("Double fault");
+	serial_println("Double fault");
 }
 
 extern "C" fn coprocessor_segment_overrun() {
-	panic!("Coprocessor segment overrun");
+	serial_println("Coprocessor segment overrun");
 }
 
 extern "C" fn invalid_task_state_segment() {
-	panic!("Invalid task state segment");
+	serial_println("Invalid task state segment");
 }
 
 extern "C" fn segment_not_present() {
-	panic!("Segment not present");
+	serial_println("Segment not present");
 }
 
 extern "C" fn stack_fault() {
-	panic!("Stack fault");
+	serial_println("Stack fault");
 }
 
 extern "C" fn general_protection_fault() {
-	panic!("General protection fault");
+	serial_println("General protection fault");
 }
 
 extern "C" fn page_fault() {
-	panic!("Page fault");
+	serial_println("Page fault");
 }
 
 extern "C" fn reserved() {
-	panic!("Reserved");
+	serial_println("Reserved");
 }
 
 extern "C" fn math_fault() {
-	panic!("Math fault");
+	serial_println("Math fault");
 }
 
 extern "C" fn alignment_check() {
-	panic!("Alignment check");
+	serial_println("Alignment check");
 }
 
 extern "C" fn machine_check() {
-	panic!("Machine check");
+	serial_println("Machine check");
 }
 
 extern "C" fn simd_floating_point_exception() {
-	panic!("SIMD floating point exception");
+	serial_println("SIMD floating point exception");
 }
 
 extern "C" fn virtualization_exception() {
-	panic!("Virtualization exception");
+	serial_println("Virtualization exception");
 }
 
 lazy_static! {
@@ -144,7 +144,6 @@ lazy_static! {
 			0x08,
 			0x8e
 		);
-
 		idt
 	};
 }
@@ -158,7 +157,7 @@ struct IDT_Register {
 pub fn idt_init() {
 	unsafe {
 		let idt_register = IDT_Register {
-			size: core::mem::size_of::<IDT>() as u16,
+			size: (core::mem::size_of::<[IDT_Descriptor; 256]>() - 1) as u16,
 			offset: IDT.as_ptr() as u32,
 		};
 

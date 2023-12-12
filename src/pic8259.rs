@@ -27,11 +27,11 @@ impl Pic {
 	}
 
 	unsafe fn read_mask(&mut self) -> u8 {
-		inb(self.data.into()) // as u16
+		inb(self.data.into())
 	}
 
 	unsafe fn write_mask(&mut self, mask: u8) {
-		outb(self.data.into(), mask); //as u16
+		outb(self.data.into(), mask);
 	}
 }
 

@@ -73,7 +73,7 @@ struct GDT_Register {
 
 unsafe fn load_gdt() {
 	let gdt_register = GDT_Register {
-		size: (core::mem::size_of::<GDT>() - 1) as u16,
+		size: (core::mem::size_of_val(&*GDT) - 1) as u16,
 		offset: GDT.as_ptr() as u32,
 	};
 

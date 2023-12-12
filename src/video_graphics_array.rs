@@ -14,7 +14,7 @@ const VGA_DATA_REGISTER: u16 = 0x3d5;
 lazy_static! {
 	pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
 		column_position: 0,
-		color: Color::new(ColorCode::Yellow, ColorCode::Red),
+		color: Color::new(ColorCode::Green, ColorCode::Black),
 		buffer: unsafe {
 			&mut *(VGA_BUFFER_ADDRESS as *mut VgaBuffer)
 		},
