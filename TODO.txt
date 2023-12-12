@@ -3,8 +3,6 @@ Pour Alix:
 Trouver comment ne pas mettre des mods et des use en chaque fichier
 
 
-
-
 Pour Lorenzo:
 
-Fix zsh avec couleur de makefile dans docker
+Regler Makefile petit a petit

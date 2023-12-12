@@ -10,7 +10,7 @@ SRC_FILES = Cargo.toml i386-unknown-none.json linker.ld Makefile_docker
 
 SRC_DIRS = src isofiles .cargo
 
-RED = \033[0;31m
+YELLOW = \033[0;33m
 GREEN = \033[0;32m
 WHITE = \033[0;37m
 
@@ -48,11 +48,11 @@ transfer-and-build: check-checksums
 	@docker cp i386-unknown-none.json $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
 	@docker cp linker.ld $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
 	@docker cp Makefile_docker $(CONTAINER_NAME):/kfs/Makefile $(NO_OUTPUT)
-	@echo "$(GREEN)\n--- Building KFS ---\n$(WHITE)"
-	docker exec $(CONTAINER_NAME) make
+	@echo "$(YELLOW)\n--- Building KFS ---\n$(WHITE)"
+	@docker exec -t $(CONTAINER_NAME) make
 	@echo "$(GREEN)\n--- Build finished ---\n$(WHITE)"
 	@docker cp $(CONTAINER_NAME):/kfs/kfs.iso kfs.iso $(NO_OUTPUT)
-	$(MAKE) update-checksums
+	@$(MAKE) update-checksums
 
 check-checksums:
 	@echo "Checking for file changes..."

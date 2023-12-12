@@ -29,7 +29,7 @@ impl InterruptIndex {
 
 #[allow(dead_code)]
 pub struct InterruptStackFrame {
-	 instruction_pointer: u32,
+	instruction_pointer: u32,
 	code_segment: u32,
 	cpu_flags: u32,
 	stack_pointer: u32,
