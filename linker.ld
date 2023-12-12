@@ -1,35 +1,39 @@
 ENTRY(start)
 
 SECTIONS {
+	.idt 0x00000000 : {
+		*(.idt)
+	}
+
 	.gdt 0x00000800 : {
 		*(.gdt)
 	}
 
-    . = 1M;
+	. = 1M;
 
-    .boot :
-    {
-        *(.multiboot_header)
-    }
+	.boot :
+	{
+		*(.multiboot_header)
+	}
 
-    .text :
-    {
-        *(.text .text.*)
-    }
+	.text :
+	{
+		*(.text .text.*)
+	}
 
-    .rodata :
-    {
-        *(.rodata .rodata.*)
-    }
+	.rodata :
+	{
+		*(.rodata .rodata.*)
+	}
 
-    .data : 
-    {
-        *(.data .data.*)
-    }
+	.data : 
+	{
+		*(.data .data.*)
+	}
 
-    .bss :
-    {
-        *(.bss .bss.*)
-        *(COMMON)
-    }
+	.bss :
+	{
+		*(.bss .bss.*)
+		*(COMMON)
+	}
 }
