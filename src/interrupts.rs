@@ -27,15 +27,24 @@ impl InterruptIndex {
 	}
 }
 
-pub extern "C" fn timer_interrupt() {
-	serial_println("Timer interrupt");
+#[allow(dead_code)]
+pub struct InterruptStackFrame {
+	 instruction_pointer: u32,
+	code_segment: u32,
+	cpu_flags: u32,
+	stack_pointer: u32,
+	stack_segment: u32,
+}
+
+pub extern "x86-interrupt" fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
+	WRITER.lock().write_byte(b'.');
 	unsafe {
 		PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 	}
 }
 
-pub extern "C" fn keyboard_interrupt() {
-	let scancode: u8 = unsafe { inb(0x60) };
+pub extern "x86-interrupt" fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
+	let scancode = unsafe { inb(0x60) };
 	WRITER.lock().write_byte(scancode);
 	unsafe {
 		PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
@@ -43,60 +52,13 @@ pub extern "C" fn keyboard_interrupt() {
 }
 
 pub fn pics_init() {
-	init_serial_port();
 	unsafe {
 		PICS.lock().initialize();
-		PICS.lock().write_masks(0b11111101, 0b11111111);
 	}
-	enable();
 }
 
 pub fn enable() {
 	unsafe {
 		asm!("sti", options(preserves_flags, nostack));
 	}
-}
-
-// DEBUG
-
-const SERIAL_PORT: u16 = 0x3f8; // COM1
-
-fn init_serial_port() {
-	use crate::io::{ outb, inb };
-
-	unsafe {
-		outb(SERIAL_PORT + 1, 0x00); // Disable all interrupts
-		outb(SERIAL_PORT + 3, 0x80); // Enable DLAB (set baud rate divisor)
-		outb(SERIAL_PORT + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
-		outb(SERIAL_PORT + 1, 0x00); //                  (hi byte)
-		outb(SERIAL_PORT + 3, 0x03); // 8 bits, no parity, one stop bit
-		outb(SERIAL_PORT + 2, 0xc7); // Enable FIFO, clear them, with 14-byte threshold
-		outb(SERIAL_PORT + 4, 0x0b); // IRQs enabled, RTS/DSR set
-	}
-}
-
-fn is_transmit_empty() -> bool {
-	use crate::io::inb;
-
-	unsafe { (inb(SERIAL_PORT + 5) & 0x20) != 0 }
-}
-
-fn serial_write_byte(byte: u8) {
-	use crate::io::outb;
-
-	while !is_transmit_empty() {}
-	unsafe {
-		outb(SERIAL_PORT, byte);
-	}
-}
-
-pub fn serial_print(s: &str) {
-	for byte in s.bytes() {
-		serial_write_byte(byte);
-	}
-}
-
-pub fn serial_println(s: &str) {
-	serial_print(s);
-	serial_print("\n\r");
 }

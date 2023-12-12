@@ -23,15 +23,15 @@ impl Pic {
 	}
 
 	unsafe fn end_of_interrupt(&mut self) {
-		outb(self.command.into(), CMD_END_OF_INTERRUPT);
+		outb(self.command as u16, CMD_END_OF_INTERRUPT);
 	}
 
 	unsafe fn read_mask(&mut self) -> u8 {
-		inb(self.data.into())
+		inb(self.data as u16)
 	}
 
 	unsafe fn write_mask(&mut self, mask: u8) {
-		outb(self.data.into(), mask);
+		outb(self.data as u16, mask);
 	}
 }
 
@@ -62,28 +62,28 @@ impl ChainedPics {
 	}
 
 	pub unsafe fn initialize(&mut self) {
-		let wait = || outb(WAIT_PORT.into(), 0);
+		let wait = || outb(WAIT_PORT as u16, 0);
 
 		let saved_masks = self.read_masks();
 
-		outb(self.pics[0].command.into(), CMD_INIT);
+		outb(self.pics[0].command as u16, CMD_INIT);
 		wait();
-		outb(self.pics[1].command.into(), CMD_INIT);
-		wait();
-
-		outb(self.pics[0].data.into(), self.pics[0].offset);
-		wait();
-		outb(self.pics[1].data.into(), self.pics[1].offset);
+		outb(self.pics[1].command as u16, CMD_INIT);
 		wait();
 
-		outb(self.pics[0].data.into(), 4);
+		outb(self.pics[0].data as u16, self.pics[0].offset);
 		wait();
-		outb(self.pics[1].data.into(), 2);
+		outb(self.pics[1].data as u16, self.pics[1].offset);
 		wait();
 
-		outb(self.pics[0].data.into(), MODE_8086);
+		outb(self.pics[0].data as u16, 0x04);
 		wait();
-		outb(self.pics[1].data.into(), MODE_8086);
+		outb(self.pics[1].data as u16, 0x02);
+		wait();
+
+		outb(self.pics[0].data as u16, MODE_8086);
+		wait();
+		outb(self.pics[1].data as u16, MODE_8086);
 		wait();
 
 		self.write_masks(saved_masks[0], saved_masks[1])
@@ -98,9 +98,9 @@ impl ChainedPics {
 		self.pics[1].write_mask(mask2);
 	}
 
-	pub unsafe fn disable(&mut self) {
-		self.write_masks(u8::MAX, u8::MAX)
-	}
+	//pub unsafe fn disable(&mut self) {
+	//	self.write_masks(u8::MAX, u8::MAX)
+	//}
 
 	pub fn handles_interrupt(&self, interrupt_id: u8) -> bool {
 		self.pics.iter().any(|p| p.handles_interrupt(interrupt_id))

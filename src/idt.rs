@@ -1,13 +1,14 @@
 use core::arch::asm;
 use lazy_static::lazy_static;
-use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt, serial_println };
+use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt };
+use crate::debug::serial_println;
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
 struct IDT_Descriptor {
 	offset_low: u16,
 	selector: u16,
-	zero: u8,
+	reserved: u8,
 	type_attributes: u8,
 	offset_high: u16,
 }
@@ -17,7 +18,7 @@ impl IDT_Descriptor {
 		IDT_Descriptor {
 			offset_low: (offset & 0xffff) as u16,
 			selector: selector,
-			zero: 0,
+			reserved: 0,
 			type_attributes,
 			offset_high: ((offset >> 16) & 0xffff) as u16,
 		}

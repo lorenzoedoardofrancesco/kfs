@@ -3,8 +3,16 @@ CONTAINER_NAME = alpinerust
 CHECKSUM_FILE = .checksums
 FILES_CHANGED_FLAG = .files_changed
 
+NO_OUTPUT = > /dev/null 2>&1
+CHECKMARK = $(GREEN)✓$(WHITE)
+
 SRC_FILES = Cargo.toml i386-unknown-none.json linker.ld Makefile_docker
+
 SRC_DIRS = src isofiles .cargo
+
+RED = \033[0;31m
+GREEN = \033[0;32m
+WHITE = \033[0;37m
 
 all: docker-build docker-create docker-start check-checksums
 
@@ -13,7 +21,7 @@ docker-build:
 		echo "Building Docker image $(IMAGE_NAME)..."; \
 		docker build -t $(IMAGE_NAME) .; \
 	else \
-		echo "Docker image $(IMAGE_NAME) already exists."; \
+		echo "$(CHECKMARK) Docker image $(IMAGE_NAME) already exists."; \
 	fi
 
 docker-create:
@@ -21,7 +29,7 @@ docker-create:
 		echo "Creating Docker container $(CONTAINER_NAME)..."; \
 		docker create --name $(CONTAINER_NAME) $(IMAGE_NAME); \
 	else \
-		echo "Docker container $(CONTAINER_NAME) already exists."; \
+		echo "$(CHECKMARK) Docker container $(CONTAINER_NAME) already exists."; \
 	fi
 
 docker-start:
@@ -29,19 +37,21 @@ docker-start:
 		echo "Starting Docker container $(CONTAINER_NAME)..."; \
 		docker start $(CONTAINER_NAME); \
 	else \
-		echo "Docker container $(CONTAINER_NAME) is already running."; \
+		echo "$(CHECKMARK) Docker container $(CONTAINER_NAME) is already running."; \
 	fi
 
 transfer-and-build: check-checksums
-	docker cp .cargo $(CONTAINER_NAME):/kfs
-	docker cp isofiles $(CONTAINER_NAME):/kfs
-	docker cp src $(CONTAINER_NAME):/kfs
-	docker cp Cargo.toml $(CONTAINER_NAME):/kfs
-	docker cp i386-unknown-none.json $(CONTAINER_NAME):/kfs
-	docker cp linker.ld $(CONTAINER_NAME):/kfs
-	docker cp Makefile_docker $(CONTAINER_NAME):/kfs/Makefile
+	@docker cp .cargo $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
+	@docker cp isofiles $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
+	@docker cp src $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
+	@docker cp Cargo.toml $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
+	@docker cp i386-unknown-none.json $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
+	@docker cp linker.ld $(CONTAINER_NAME):/kfs $(NO_OUTPUT)
+	@docker cp Makefile_docker $(CONTAINER_NAME):/kfs/Makefile $(NO_OUTPUT)
+	@echo "$(GREEN)\n--- Building KFS ---\n$(WHITE)"
 	docker exec $(CONTAINER_NAME) make
-	docker cp $(CONTAINER_NAME):/kfs/kfs.iso kfs.iso
+	@echo "$(GREEN)\n--- Build finished ---\n$(WHITE)"
+	@docker cp $(CONTAINER_NAME):/kfs/kfs.iso kfs.iso $(NO_OUTPUT)
 	$(MAKE) update-checksums
 
 check-checksums:
