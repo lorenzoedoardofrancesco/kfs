@@ -2,6 +2,7 @@ Pour Alix:
 
 Trouver comment ne pas mettre des mods et des use en chaque fichier
 
+//weird numpad input, removes char
 
 Pour Lorenzo:
 

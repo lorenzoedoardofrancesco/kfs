@@ -1,7 +1,7 @@
 use core::fmt;
 use crate::io::outb;
 use lazy_static::lazy_static;
-use spin::Mutex;
+use spin::Mutex; 
 
 const VGA_BUFFER_ADDRESS: usize = 0xb8000;
 pub const VGA_COLUMNS: usize = 80;

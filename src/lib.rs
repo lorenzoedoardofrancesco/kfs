@@ -2,7 +2,7 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
-#[macro_use] mod librs;
+#[macro_use] mod librs; 
 mod debug;
 mod gdt;
 mod idt;
@@ -11,6 +11,7 @@ mod io;
 mod keyboard;
 mod prompt;
 mod pic8259;
+mod shell;
 mod video_graphics_array;
 
 use core::panic::PanicInfo;

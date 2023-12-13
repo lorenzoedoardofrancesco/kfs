@@ -1,11 +1,10 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
 use crate::video_graphics_array::{ WRITER, VGA_COLUMNS, VGA_LAST_LINE };
-//a delete vvvv
-use crate::librs;
+use crate::shell::readline;
 
-static PROMPT_STRING: &str = "$> ";
-static PROMPT_LENGTH: usize = PROMPT_STRING.len();
+pub static PROMPT_STRING: &str = "$> ";
+pub static PROMPT_LENGTH: usize = PROMPT_STRING.len();
 
 lazy_static! {
 	pub static ref PROMPT: Mutex<Prompt> = Mutex::new(Prompt {
@@ -29,64 +28,7 @@ impl Prompt {
 	pub fn insert_char(&mut self, c: u8, insert: bool) {
 		if c == b'\n' {
 			println!();
-
-			// TIME A METTRE DE COTE
-
-			const CMOS_ADDRESS: u16 = 0x70;
-			const CMOS_DATA: u16 = 0x71;
-
-			fn bcd_to_binary(bcd: u8) -> u8 {
-				((bcd & 0xF0) >> 4) * 10 + (bcd & 0x0F)
-			}
-
-			fn read_cmos(register: u8) -> u8 {
-				unsafe {
-					use crate::io::{ inb, outb };
-					outb(CMOS_ADDRESS, register);
-					inb(CMOS_DATA)
-				}
-			}
-
-			fn get_rtc_time() -> (u8, u8, u8) {
-				let seconds = bcd_to_binary(read_cmos(0x00));
-				let minutes = bcd_to_binary(read_cmos(0x02));
-				let hours = bcd_to_binary(read_cmos(0x04));
-			
-				(hours, minutes, seconds)
-			}
-			//example juste pour TEST a refaire proprement sur shell.rs
-			let buffer = core::str::from_utf8(&self.buffer[PROMPT_LENGTH..self.length]).unwrap();
-			if buffer == "help" {
-				println!("Available commands:");
-				println!("    help   | display this help message");
-				println!("    clear  | clear the screen");
-				println!("    echo   | display the arguments");
-				println!("    printk | print the stack");
-				println!("    time   | print the time");
-				println!("    miao   | print a cat");
-			} else if buffer == "clear" {
-				WRITER.lock().clear_screen();
-			} else if buffer.starts_with("echo") {
-				let message = &buffer["echo".len()..];
-				if message.starts_with(" ") && message.len() > 1 {
-					println!("{}", message[1..].trim());
-				} else {
-					println!("echo: missing argument");
-				}
-			} else if buffer == "printk" {
-				librs::print_stack();
-			} else if buffer == "time" {
-				let (hours, minutes, seconds) = get_rtc_time();
-				println!("{:02}:{:02}:{:02}", hours, minutes, seconds);
-			} else if buffer == "miao" {
-				println!("  /\\_/\\");
-				println!("=( ^.^ )=");
-				println!("  )   (   //");
-				println!(" (__ __)//");
-			} else if buffer != "" {
-				println!("Unknown command: {}", buffer);
-			}
-
+			readline(core::str::from_utf8(&self.buffer[PROMPT_LENGTH..self.length]).unwrap());
 			self.init();
 			return;
 		}
