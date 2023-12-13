@@ -3,6 +3,9 @@ use crate::io::outb;
 use lazy_static::lazy_static;
 use spin::Mutex; 
 
+const NUM_SCREENS: usize = 4;
+const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS;
+
 const VGA_BUFFER_ADDRESS: usize = 0xb8000;
 pub const VGA_COLUMNS: usize = 80;
 const VGA_ROWS: usize = 25;
@@ -18,6 +21,29 @@ lazy_static! {
 		buffer: unsafe {
 			&mut *(VGA_BUFFER_ADDRESS as *mut VgaBuffer)
 		},
+		screen: [
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Green, ColorCode::Black),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Blue, ColorCode::Black),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Red, ColorCode::Black),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Yellow, ColorCode::Black),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+		],
+		current_display: 0,
 	});
 }
 
@@ -75,10 +101,18 @@ impl VgaBuffer {
 	}
 }
 
+struct ScreenState {
+	column_position: usize,
+	color: Color,
+	buffer: [u8; VGA_BUFFER_SIZE],
+}
+
 pub struct Writer {
 	pub column_position: usize,
 	color: Color,
 	buffer: &'static mut VgaBuffer,
+	screen: [ScreenState; NUM_SCREENS],
+	pub current_display: usize,
 }
 
 impl Writer {
@@ -164,6 +198,47 @@ impl Writer {
 		}
 		self.update_cursor(VGA_LAST_LINE, self.column_position);
 	}
+
+	fn backup_display(&mut self) {
+		self.screen[self.current_display].column_position = self.column_position;
+		self.screen[self.current_display].color = self.color;
+		for row in 0..VGA_ROWS - 1 {
+			for column in 0..VGA_COLUMNS {
+				self.screen[self.current_display].buffer[row * VGA_COLUMNS + column] = self.buffer.read(
+					row,
+					column
+				).ascii_character;
+			}
+		}
+	}
+
+	fn restore_display(&mut self, display: usize) {
+		self.column_position = self.screen[display].column_position;
+		self.color = self.screen[display].color;
+		for row in 0..VGA_ROWS - 1 {
+			for column in 0..VGA_COLUMNS {
+				self.buffer.write(
+					ScreenChar {
+						ascii_character: self.screen[display].buffer[row * VGA_COLUMNS + column],
+						color: self.color,
+					},
+					row,
+					column
+				);
+			}
+		}
+	}
+}
+
+pub fn change_display(display: usize) {
+	use crate::prompt;
+	if WRITER.lock().current_display == display {
+		return;
+	}
+	WRITER.lock().backup_display();
+	WRITER.lock().restore_display(display);
+	WRITER.lock().current_display = display;
+	prompt::PROMPT.lock().init();
 }
 
 impl fmt::Write for Writer {

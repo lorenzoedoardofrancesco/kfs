@@ -78,6 +78,7 @@ impl Prompt {
 
 	pub fn init(&mut self) {
 		self.clear();
+		WRITER.lock().column_position = 0;
 		self.insert_string(PROMPT_STRING);
 	}
 }
