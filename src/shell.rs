@@ -1,5 +1,4 @@
 use crate::librs;
-use crate::prompt;
 use crate::prompt::PROMPT;
 use crate::video_graphics_array::WRITER;
 use lazy_static::lazy_static;
@@ -40,34 +39,34 @@ impl History {
                 for &c in line.iter().take_while(|&&c| c != 0) {
                     print!("{}", c as char);
                 }
-				println!();
+                println!();
             }
         }
     }
 
-	fn print_prompt(&self, index: usize) {
-		for c in self.get(index).iter().take_while(|&&c| c != 0) {
-			PROMPT.lock().insert_char(*c, false);
-		}
-	}
+    fn print_prompt(&self, index: usize) {
+        for c in self.get(index).iter().take_while(|&&c| c != 0) {
+            PROMPT.lock().insert_char(*c, false);
+        }
+    }
 
-	pub fn scroll_up(&mut self) {
-		if self.index == 0 {
-			return;
-		}
+    pub fn scroll_up(&mut self) {
+        if self.index == 0 {
+            return;
+        }
 
-		self.index = (self.index - 1) % MAX_HISTORY_LINES;
-		self.print_prompt(self.index);
-	}
+        self.index = (self.index - 1) % MAX_HISTORY_LINES;
+        self.print_prompt(self.index);
+    }
 
-	pub fn scroll_down(&mut self) {
-		if self.index == MAX_HISTORY_LINES - 1 {
-			return;
-		}
+    pub fn scroll_down(&mut self) {
+        if self.index == MAX_HISTORY_LINES - 1 {
+            return;
+        }
 
-		self.index = (self.index + 1) % MAX_HISTORY_LINES;
-		self.print_prompt(self.index);
-	}
+        self.index = (self.index + 1) % MAX_HISTORY_LINES;
+        self.print_prompt(self.index);
+    }
 }
 
 lazy_static! {
@@ -156,6 +155,27 @@ fn shutdown() {
     }
 }
 
+fn date() {
+    let (hours, minutes, seconds) = get_rtc_time();
+    let (year, month, day) = (read_cmos(0x09), read_cmos(0x08), read_cmos(0x07));
+    println!(
+        "{:02}/{:02}/{:02} {:02}:{:02}:{:02}",
+        year, month, day, hours, minutes, seconds
+    );
+}
+
+fn uname() {
+    println!(
+        "{} {} {} {} {} {}",
+        "KFC",
+        "0.0.1-kfc1-i386",
+        "DeepFryer 0.0.1-1kfc1 (2023-12-13)",
+        "i386",
+        "KFC/Deepnux",
+        "A|L"
+    );
+}
+
 pub fn readline(raw_line: &str) {
     let line = raw_line.trim();
     HISTORY.lock().add(raw_line);
@@ -169,14 +189,16 @@ pub fn readline(raw_line: &str) {
         "halt" => librs::hlt(),
         "shutdown" => shutdown(),
         "history" => HISTORY.lock().print(),
+        "date" => date(),
+        "uname" => uname(),
         _ => {
             if line.starts_with("echo") {
                 echo(line);
             } else {
-				let mut len = line.len();
-				if len > 50 {
-					len = 50;
-				}
+                let mut len = line.len();
+                if len > 50 {
+                    len = 50;
+                }
                 println!("Unknown command: {}", line[0..len].trim());
             }
         }
