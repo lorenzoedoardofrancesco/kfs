@@ -1,6 +1,7 @@
-use spin::Mutex;
 use core::sync::atomic::{ AtomicBool, Ordering };
+use spin::Mutex;
 use crate::prompt;
+use crate::video_graphics_array;
 
 pub static KEYBOARD_INTERRUPT_RECEIVED: AtomicBool = AtomicBool::new(false);
 pub static LAST_SCANCODE: Mutex<u8> = Mutex::new(0);
@@ -68,6 +69,10 @@ pub fn process_keyboard_input() {
 			// 0x48 up arrow
 			// 0x50 down arrow
 			0x53 => prompt::delete(),
+			0x3b => video_graphics_array::change_display(0),
+			0x3c => video_graphics_array::change_display(1),
+			0x3d => video_graphics_array::change_display(2),
+			0x3e => video_graphics_array::change_display(3),
 			_ => (),
 		}
 	}
@@ -131,10 +136,6 @@ pub fn process_keyboard_input() {
 			0x35 => if shift { '?' } else { '/' }
 			0x37 => '*',
 			0x39 => ' ',
-			// 0x3b F1
-			// 0x3c F2
-			// 0x3d F3
-			// 0x3e F4
 			// 0x3f F5
 			// 0x40 F6
 			// 0x41 F7

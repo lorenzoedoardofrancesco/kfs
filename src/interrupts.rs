@@ -1,6 +1,6 @@
+use spin::Mutex;
 use crate::io::inb;
 use crate::pic8259::ChainedPics;
-use spin::Mutex;
 
 pub const PIC_1_OFFSET: u8 = 32;
 

@@ -1,7 +1,7 @@
 use core::arch::asm;
 use lazy_static::lazy_static;
-use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt };
 use crate::debug::serial_println;
+use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt };
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
