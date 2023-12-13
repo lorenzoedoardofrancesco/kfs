@@ -1,6 +1,6 @@
 use spin::Mutex;
 use core::sync::atomic::{ AtomicBool, Ordering };
-use crate::prompt;
+use crate::{prompt, shell::HISTORY };
 
 pub static KEYBOARD_INTERRUPT_RECEIVED: AtomicBool = AtomicBool::new(false);
 pub static LAST_SCANCODE: Mutex<u8> = Mutex::new(0);
@@ -65,8 +65,8 @@ pub fn process_keyboard_input() {
 			0x4b => prompt::left_arrow(),
 			0x47 => prompt::home(),
 			0x4f => prompt::end(),
-			// 0x48 up arrow
-			// 0x50 down arrow
+			0x48 => HISTORY.lock().scroll_up(), // 0x48 up arrow
+			0x50 => HISTORY.lock().scroll_down(), // 0x50 down arrow
 			0x53 => prompt::delete(),
 			_ => (),
 		}

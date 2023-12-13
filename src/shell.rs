@@ -1,4 +1,6 @@
 use crate::librs;
+use crate::prompt;
+use crate::prompt::PROMPT;
 use crate::video_graphics_array::WRITER;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -6,7 +8,7 @@ use spin::Mutex;
 const CMOS_ADDRESS: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
 
-const MAX_LINE_LENGTH: usize = 75;
+const MAX_LINE_LENGTH: usize = 76;
 const MAX_HISTORY_LINES: usize = 16;
 
 pub struct History {
@@ -42,6 +44,30 @@ impl History {
             }
         }
     }
+
+	fn print_prompt(&self, index: usize) {
+		for c in self.get(index).iter().take_while(|&&c| c != 0) {
+			PROMPT.lock().insert_char(*c, false);
+		}
+	}
+
+	pub fn scroll_up(&mut self) {
+		if self.index == 0 {
+			return;
+		}
+
+		self.index = (self.index - 1) % MAX_HISTORY_LINES;
+		self.print_prompt(self.index);
+	}
+
+	pub fn scroll_down(&mut self) {
+		if self.index == MAX_HISTORY_LINES - 1 {
+			return;
+		}
+
+		self.index = (self.index + 1) % MAX_HISTORY_LINES;
+		self.print_prompt(self.index);
+	}
 }
 
 lazy_static! {
@@ -147,7 +173,11 @@ pub fn readline(raw_line: &str) {
             if line.starts_with("echo") {
                 echo(line);
             } else {
-                println!("Unknown command: {}", line)
+				let mut len = line.len();
+				if len > 50 {
+					len = 50;
+				}
+                println!("Unknown command: {}", line[0..len].trim());
             }
         }
     }
