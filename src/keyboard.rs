@@ -1,6 +1,6 @@
 use core::sync::atomic::{ AtomicBool, Ordering };
 use spin::Mutex;
-use crate::{prompt, shell::HISTORY };
+use crate::{ prompt, shell::HISTORY };
 use crate::video_graphics_array;
 
 pub static KEYBOARD_INTERRUPT_RECEIVED: AtomicBool = AtomicBool::new(false);
@@ -12,6 +12,8 @@ static NUM_LOCK_PRESSED: AtomicBool = AtomicBool::new(false);
 static CAPS_LOCK_PRESSED: AtomicBool = AtomicBool::new(false);
 static ALT_GR_PRESSED: AtomicBool = AtomicBool::new(false);
 static INSERT_PRESSED: AtomicBool = AtomicBool::new(false);
+static FOREGROUND: bool = true;
+static BACKGROUND: bool = false;
 
 pub fn process_keyboard_input() {
 	static mut SCANCOD_BUFFER: [u8; 256] = [0; 256];
@@ -73,6 +75,8 @@ pub fn process_keyboard_input() {
 			0x3c => video_graphics_array::change_display(1),
 			0x3d => video_graphics_array::change_display(2),
 			0x3e => video_graphics_array::change_display(3),
+			0x57 => video_graphics_array::change_color(FOREGROUND),
+			0x58 => video_graphics_array::change_color(BACKGROUND),
 			_ => (),
 		}
 	}
@@ -155,9 +159,6 @@ pub fn process_keyboard_input() {
 			0x51 => if num_lock { '3' } else { '\0' }
 			0x52 => if num_lock { '0' } else { '\0' }
 			0x53 => if num_lock { '.' } else { '\0' }
-			// 0x57 F11
-			// 0x58 F12
-
 			_ => '\0',
 		}
 	}

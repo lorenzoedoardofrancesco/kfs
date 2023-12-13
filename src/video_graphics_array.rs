@@ -1,7 +1,7 @@
 use core::fmt;
 use crate::io::outb;
 use lazy_static::lazy_static;
-use spin::Mutex; 
+use spin::Mutex;
 
 const NUM_SCREENS: usize = 4;
 const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS;
@@ -76,6 +76,16 @@ struct Color(u8);
 impl Color {
 	fn new(foreground: ColorCode, background: ColorCode) -> Color {
 		Color(((background as u8) << 4) | (foreground as u8))
+	}
+
+	fn increase_foreground(&mut self) {
+		let foreground = self.0 & 0x0f;
+		self.0 = ((foreground + 0x01) % 0x0f) + (self.0 & 0xf0);
+	}
+
+	fn increase_background(&mut self) {
+		let background = self.0 & 0xf0;
+		self.0 = ((background + 0x10) % 0xf0) + (self.0 & 0x0f);
 	}
 }
 
@@ -204,10 +214,8 @@ impl Writer {
 		self.screen[self.current_display].color = self.color;
 		for row in 0..VGA_ROWS - 1 {
 			for column in 0..VGA_COLUMNS {
-				self.screen[self.current_display].buffer[row * VGA_COLUMNS + column] = self.buffer.read(
-					row,
-					column
-				).ascii_character;
+				self.screen[self.current_display].buffer[row * VGA_COLUMNS + column] =
+					self.buffer.read(row, column).ascii_character;
 			}
 		}
 	}
@@ -228,6 +236,21 @@ impl Writer {
 			}
 		}
 	}
+
+	fn update_display(&mut self) {
+		for row in 0..VGA_ROWS {
+			for column in 0..VGA_COLUMNS {
+				self.buffer.write(
+					ScreenChar {
+						ascii_character: self.buffer.read(row, column).ascii_character,
+						color: self.color,
+					},
+					row,
+					column
+				);
+			}
+		}
+	}
 }
 
 pub fn change_display(display: usize) {
@@ -239,6 +262,15 @@ pub fn change_display(display: usize) {
 	WRITER.lock().restore_display(display);
 	WRITER.lock().current_display = display;
 	prompt::PROMPT.lock().init();
+}
+
+pub fn change_color(foreground: bool) {
+	if foreground {
+		WRITER.lock().color.increase_foreground();
+	} else {
+		WRITER.lock().color.increase_background();
+	}
+	WRITER.lock().update_display();
 }
 
 impl fmt::Write for Writer {
