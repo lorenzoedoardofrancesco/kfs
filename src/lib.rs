@@ -2,12 +2,14 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
+#[macro_use] mod librs;
 mod debug;
 mod gdt;
 mod idt;
 mod interrupts;
 mod io;
-mod librs;
+mod keyboard;
+mod prompt;
 mod pic8259;
 mod video_graphics_array;
 
@@ -17,8 +19,9 @@ use librs::clear;
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
 	init();
-	librs::print_stack();
 	clear();
+	
+	prompt::PROMPT.lock().init();
 	//println!("Grosse ****");
 	//println!("****");
 	//let test1 = 0xabcdef01 as u32;
@@ -27,6 +30,8 @@ pub extern "C" fn _start() -> ! {
 	//let test4 = 0x10fedcba as u32;
 	//println!("test1: {:x}, test2: {:x}, test3: {:x}, test4: {:x}", test1, test2, test3, test4);
 	loop {
+		keyboard::process_keyboard_input();
+		librs::hlt();
 	}
 }
 
@@ -34,13 +39,13 @@ pub extern "C" fn _start() -> ! {
 fn panic(info: &PanicInfo) -> ! {
 	println!("{}", info);
 	loop {
+		librs::hlt();
 	}
 }
 
 fn init() {
-	gdt::gdt_init();
-	idt::idt_init();
-	interrupts::pics_init();
-	interrupts::enable();
+	gdt::init();
+	idt::init();
+	interrupts::init();
 	debug::init_serial_port();
 }

@@ -1,8 +1,6 @@
-use core::arch::asm;
 use crate::io::inb;
 use crate::pic8259::ChainedPics;
 use spin::Mutex;
-use crate::video_graphics_array::WRITER;
 
 pub const PIC_1_OFFSET: u8 = 32;
 
@@ -11,10 +9,24 @@ pub static PICS: Mutex<ChainedPics> = Mutex::new(unsafe {
 });
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 #[repr(u8)]
 pub enum InterruptIndex {
 	Timer = PIC_1_OFFSET,
 	Keyboard,
+	Cascade,
+	Com2,
+	Com1,
+	Lpt2,
+	Floppy,
+	Lpt1,
+	Rtc,
+	Free1,
+	Free2,
+	Free3,
+	Ps2Mouse,
+	PrimaryAtaHardDisk,
+	SecondaryAtaHardDisk,
 }
 
 impl InterruptIndex {
@@ -37,28 +49,41 @@ pub struct InterruptStackFrame {
 }
 
 pub extern "x86-interrupt" fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
-	WRITER.lock().write_byte(b'.');
 	unsafe {
 		PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 	}
 }
 
 pub extern "x86-interrupt" fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
-	let scancode = unsafe { inb(0x60) };
-	WRITER.lock().write_byte(scancode);
+	use core::sync::atomic::{ Ordering };
+	use crate::keyboard::{ KEYBOARD_INTERRUPT_RECEIVED, LAST_SCANCODE };
+	let scancode: u8 = unsafe { inb(0x60) };
+
+	*LAST_SCANCODE.lock() = scancode;
+	KEYBOARD_INTERRUPT_RECEIVED.store(true, Ordering::SeqCst);
+
 	unsafe {
 		PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
 	}
 }
 
-pub fn pics_init() {
+pub fn init() {
 	unsafe {
 		PICS.lock().initialize();
 	}
+	enable();
 }
 
 pub fn enable() {
+	use core::arch::asm;
 	unsafe {
 		asm!("sti", options(preserves_flags, nostack));
+	}
+}
+
+pub fn disable() {
+	use core::arch::asm;
+	unsafe {
+		asm!("cli", options(preserves_flags, nostack));
 	}
 }

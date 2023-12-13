@@ -100,7 +100,7 @@ unsafe fn load_segment_registers() {
 	);
 }
 
-pub fn gdt_init() {
+pub fn init() {
 	unsafe {
 		load_gdt();
 		load_segment_registers();

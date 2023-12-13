@@ -1,5 +1,5 @@
 use core::fmt;
-
+use crate::interrupts;
 use crate::video_graphics_array::WRITER;
 
 #[macro_export]
@@ -26,13 +26,23 @@ macro_rules! printk {
 
 pub fn print(args: fmt::Arguments) {
 	use core::fmt::Write;
+	interrupts::disable();
 	WRITER.lock().write_fmt(args).unwrap();
+	interrupts::enable();
 }
 
 pub fn clear() {
+	interrupts::disable();
 	WRITER.lock().clear_screen();
+	interrupts::enable();
 }
 
+#[inline]
+pub fn hlt() {
+	unsafe {
+		asm!("hlt", options(nomem, nostack, preserves_flags));
+	}
+}
 /*/
 pub const KERN_EMERG: &str = "KERN_EMERG: ";
 pub const KERN_ALERT: &str = "KERN_ALERT: ";
@@ -49,7 +59,9 @@ pub fn printk(/*level: &str, */args: fmt::Arguments) {
 	/*let mut writer = WRITER.lock();
 	writer.write_str(level).unwrap();
 	writer.write_fmt(args).unwrap();*/
+	interrupts::disable();
 	WRITER.lock().write_fmt(args).unwrap();
+	interrupts::enable();
 }
 
 ///

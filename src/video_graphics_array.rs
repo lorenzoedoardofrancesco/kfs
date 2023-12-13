@@ -4,9 +4,9 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 
 const VGA_BUFFER_ADDRESS: usize = 0xb8000;
-const VGA_COLUMNS: usize = 80;
+pub const VGA_COLUMNS: usize = 80;
 const VGA_ROWS: usize = 25;
-const VGA_LAST_LINE: usize = VGA_ROWS - 1;
+pub const VGA_LAST_LINE: usize = VGA_ROWS - 1;
 
 const VGA_CTRL_REGISTER: u16 = 0x3d4;
 const VGA_DATA_REGISTER: u16 = 0x3d5;
@@ -65,12 +65,6 @@ struct VgaBuffer {
 	chars: [[ScreenChar; VGA_COLUMNS]; VGA_ROWS],
 }
 
-pub struct Writer {
-	column_position: usize,
-	color: Color,
-	buffer: &'static mut VgaBuffer,
-}
-
 impl VgaBuffer {
 	fn read(&self, row: usize, column: usize) -> ScreenChar {
 		self.chars[row][column]
@@ -81,15 +75,17 @@ impl VgaBuffer {
 	}
 }
 
+pub struct Writer {
+	pub column_position: usize,
+	color: Color,
+	buffer: &'static mut VgaBuffer,
+}
+
 impl Writer {
 	pub fn write_byte(&mut self, byte: u8) {
 		match byte {
 			b'\n' => self.new_line(),
 			byte => {
-				if self.column_position >= VGA_COLUMNS {
-					self.new_line();
-				}
-
 				self.buffer.write(
 					ScreenChar {
 						ascii_character: byte,
@@ -112,6 +108,13 @@ impl Writer {
 			}
 		}
 		self.update_cursor(VGA_LAST_LINE, self.column_position);
+	}
+
+	pub fn update_line(&mut self, s: &str) {
+		let cursor = self.column_position;
+		self.clear_row(VGA_LAST_LINE);
+		self.write_string(s);
+		self.column_position = cursor;
 	}
 
 	fn new_line(&mut self) {
@@ -142,7 +145,7 @@ impl Writer {
 		self.update_cursor(VGA_LAST_LINE, self.column_position);
 	}
 
-	fn update_cursor(&mut self, row: usize, column: usize) {
+	pub fn update_cursor(&mut self, row: usize, column: usize) {
 		let position: u16 = (row * VGA_COLUMNS + column) as u16;
 
 		unsafe {
@@ -151,6 +154,15 @@ impl Writer {
 			outb(VGA_CTRL_REGISTER, 0x0e);
 			outb(VGA_DATA_REGISTER, ((position >> 8) & 0xff) as u8);
 		}
+	}
+
+	pub fn move_cursor(&mut self, i: i8) {
+		if i < 0 {
+			self.column_position -= i.abs() as usize;
+		} else if i > 0 {
+			self.column_position += i as usize;
+		}
+		self.update_cursor(VGA_LAST_LINE, self.column_position);
 	}
 }
 
