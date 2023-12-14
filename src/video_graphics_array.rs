@@ -127,6 +127,9 @@ pub struct Writer {
 
 impl Writer {
 	pub fn write_byte(&mut self, byte: u8) {
+		if self.column_position == VGA_COLUMNS {
+			self.new_line();
+		}
 		match byte {
 			b'\n' => self.new_line(),
 			byte => {
