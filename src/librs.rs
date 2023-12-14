@@ -31,6 +31,12 @@ pub fn print(args: fmt::Arguments) {
 	interrupts::enable();
 }
 
+pub fn printraw(string: &str) {
+	interrupts::disable();
+	WRITER.lock().write_string_raw(string);
+	interrupts::enable();
+}
+
 pub fn clear() {
 	interrupts::disable();
 	WRITER.lock().clear_screen();

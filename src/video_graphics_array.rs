@@ -157,6 +157,14 @@ impl Writer {
 		self.update_cursor(VGA_LAST_LINE, self.column_position);
 	}
 
+	pub fn write_string_raw(&mut self, s: &str) {
+		let shift: u8 = 0x6F;
+		for byte in s.bytes() {
+			self.write_byte(byte);
+		}
+		self.update_cursor(VGA_LAST_LINE, self.column_position);
+	}
+
 	pub fn update_line(&mut self, s: &str) {
 		let cursor = self.column_position;
 		self.clear_row(VGA_LAST_LINE);
