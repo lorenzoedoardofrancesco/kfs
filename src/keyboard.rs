@@ -1,6 +1,6 @@
 use core::sync::atomic::{ AtomicBool, Ordering };
 use spin::Mutex;
-use crate::{ prompt, shell::HISTORY };
+use crate::{ prompt, shell::HISTORY, shell::print_welcome_message };
 use crate::video_graphics_array;
 
 pub static KEYBOARD_INTERRUPT_RECEIVED: AtomicBool = AtomicBool::new(false);
@@ -83,7 +83,7 @@ pub fn process_keyboard_input() {
 			// 0x40 F6
 			// 0x41 F7
 			// 0x42 F8
-			// 0x43 F9
+			0x43 => print_welcome_message(),
 			0x44 => change_keyboard_layout(),
 			0x57 => video_graphics_array::change_color(FOREGROUND),
 			0x58 => video_graphics_array::change_color(BACKGROUND),

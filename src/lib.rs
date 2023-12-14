@@ -2,7 +2,7 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
-#[macro_use] mod librs; 
+#[macro_use] mod librs;
 mod debug;
 mod gdt;
 mod idt;
@@ -15,14 +15,10 @@ mod shell;
 mod video_graphics_array;
 
 use core::panic::PanicInfo;
-use librs::clear;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
 	init();
-	clear();
-	
-	prompt::PROMPT.lock().init();
 	//println!("Grosse ****");
 	//println!("****");
 	//let test1 = 0xabcdef01 as u32;
@@ -49,4 +45,5 @@ fn init() {
 	idt::init();
 	interrupts::init();
 	debug::init_serial_port();
+	shell::print_welcome_message();
 }
