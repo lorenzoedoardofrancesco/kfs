@@ -1,6 +1,6 @@
-use crate::librs;
 use crate::prompt::PROMPT;
 use crate::video_graphics_array::WRITER;
+use crate::librs::{self, printraw};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -102,39 +102,35 @@ fn get_rtc_time() -> (u8, u8, u8) {
     (hours, minutes, seconds)
 }
 
-fn help() {
-    // println!("┌─────────────────────────────────────────────────────────────────────────────┐");
-    // println!("│ Available commands:                                                         │");
-    // println!("├─────────────────────────────────────────────────────────────────────────────┤");
-    // println!("│    help   | display this help message                                       │");
-    // println!("│    clear  | clear the screen                                                │");
-    // println!("│    echo   | display the arguments                                           │");
-    // println!("│    printk | print the stack                                                 │");
-    // println!("│    time   | print the time                                                  │");
-    // println!("│    miao   | print a cat                                                     │");
-    // println!("│    reboot | reboot the system                                               │");
-    // println!("│    halt   | halt the system                                                 │");
-    // println!("│    shutdown | shutdown the system                                           │");
-    // println!("│    F1-F4   | switch to tty1-4                                               │");
-    // println!("│    F11-F12 | switch tty colors                                              │");
-    // println!("├─────────────────────────────────────────────────────────────────────────────┤");
-    // println!("│ Type 'history' to view command history                                      │");
-    // println!("└─────────────────────────────────────────────────────────────────────────────┘");
-	//librs::printraw(" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"); 
-    librs::printraw("Z [ \\ h i j k l m n m n n"); 
-    println!("");
-    // Y    ┤
-    // Z    ||
-    // [    ┐
-    // \\   ┘
-    // h    └
-    // i    ┌
-    // j    ┴
-    // k    ┬
-    // l    ├
-    // m    ─
-    // n    ┼
+fn print_help_line(command: &str, description: &str) {
+    print!("  {:13}", command);
+    printraw("Z");
+    print!("  {:60}", description);
+    if command != "F11-F12" {
+      printraw("ZZ");
+    }
+}
 
+fn help() {
+    clear();
+    printraw("immmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm[Z");
+    print!(" Available commands:                                                          ");
+    printraw("ZlmmmmmmmmmmmmmmmkmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
+    print_help_line("help", "display this help message");
+    print_help_line("clear", "clear the screen");
+    print_help_line("echo", "display the arguments");
+    print_help_line("printk", "print the stack");
+    print_help_line("time", "print the time");
+    print_help_line("miao", "print a cat");
+    print_help_line("reboot", "reboot the system");
+    print_help_line("halt", "halt the system");
+    print_help_line("shutdown", "shutdown the system");
+    print_help_line("F1-F4", "switch to tty1-4");
+    print_help_line("F11-F12", "switch tty colors");
+    printraw("ZlmmmmmmmmmmmmmmmjmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
+    print!(" Type 'history' to view command history                                       ");
+    printraw("Zhmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm\\");
+    println!("");
 }
 
 fn clear() {
