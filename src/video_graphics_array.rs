@@ -158,9 +158,9 @@ impl Writer {
 	}
 
 	pub fn write_string_raw(&mut self, s: &str) {
-		let shift: u8 = 0x6F;
+		let shift: u8 = 96;
 		for byte in s.bytes() {
-			self.write_byte(byte);
+			self.write_byte(byte+shift);
 		}
 		self.update_cursor(VGA_LAST_LINE, self.column_position);
 	}

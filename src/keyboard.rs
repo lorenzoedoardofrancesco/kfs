@@ -10,7 +10,7 @@ static SHIFT_PRESSED: AtomicBool = AtomicBool::new(false);
 static CTRL_PRESSED: AtomicBool = AtomicBool::new(false);
 static NUM_LOCK_PRESSED: AtomicBool = AtomicBool::new(false);
 static CAPS_LOCK_PRESSED: AtomicBool = AtomicBool::new(false);
-static ALT_GR_PRESSED: AtomicBool = AtomicBool::new(false);
+//static ALT_GR_PRESSED: AtomicBool = AtomicBool::new(false);
 static INSERT_PRESSED: AtomicBool = AtomicBool::new(false);
 static FOREGROUND: bool = true;
 static BACKGROUND: bool = false;
@@ -101,10 +101,10 @@ pub fn process_keyboard_input() {
 
 	fn scancode_to_char(scancode: u8) -> char {
 		let shift = SHIFT_PRESSED.load(Ordering::SeqCst);
-		let ctrl = CTRL_PRESSED.load(Ordering::SeqCst);
+		//let ctrl = CTRL_PRESSED.load(Ordering::SeqCst);
 		let num_lock = NUM_LOCK_PRESSED.load(Ordering::SeqCst);
 		let caps_lock = CAPS_LOCK_PRESSED.load(Ordering::SeqCst);
-		let alt_gr = ALT_GR_PRESSED.load(Ordering::SeqCst);
+		//let alt_gr = ALT_GR_PRESSED.load(Ordering::SeqCst);
 
 		if KEYBOARD_LAYOUT.load(Ordering::SeqCst) == QWERTY {
 			match scancode {

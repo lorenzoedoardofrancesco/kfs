@@ -120,7 +120,21 @@ fn help() {
     // println!("├─────────────────────────────────────────────────────────────────────────────┤");
     // println!("│ Type 'history' to view command history                                      │");
     // println!("└─────────────────────────────────────────────────────────────────────────────┘");
-	librs::printraw("ABCDEFGHIJKLMNOPQRSTUVWXYZabc");
+	//librs::printraw(" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"); 
+    librs::printraw("Z [ \\ h i j k l m n m n n"); 
+    println!("");
+    // Y    ┤
+    // Z    ||
+    // [    ┐
+    // \\   ┘
+    // h    └
+    // i    ┌
+    // j    ┴
+    // k    ┬
+    // l    ├
+    // m    ─
+    // n    ┼
+
 }
 
 fn clear() {
