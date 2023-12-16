@@ -1,6 +1,5 @@
 use crate::io::inb;
 use crate::pic8259::ChainedPics;
-use crate::prompt::PROMPT;
 use spin::Mutex;
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -89,15 +88,15 @@ macro_rules! handler {
 
 
 pub extern "C" fn divide_by_zero(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: DIVIDE BY ZERO\n");
+	println!("EXCEPTION: DIVIDE BY ZERO\n{:#x?}", _stack_frame);
 }
 
 pub extern "C" fn debug(_stack_frame: &mut InterruptStackFrame) {
-	println!("Debug");
+	println!("EXCEPTION: DEBUG\n{:#x?}", _stack_frame);
 }
 
 pub extern "C" fn non_maskable_interrupt(_stack_frame: &mut InterruptStackFrame) {
-	println!("Non-maskable interrupt");
+	println!("EXCEPTION: NON MASKABLE INTERRUPT\n{:#x?}", _stack_frame);
 }
 
 pub extern "C" fn breakpoint(_stack_frame: &mut InterruptStackFrame) {
@@ -105,80 +104,80 @@ pub extern "C" fn breakpoint(_stack_frame: &mut InterruptStackFrame) {
 }
 
 pub fn overflow(_stack_frame: &mut InterruptStackFrame) {
-	println!("Overflow");
+	println!("EXCEPTION: OVERFLOW\n{:#x?}", _stack_frame);
 }
 
 pub fn bound_range_exceeded(_stack_frame: &mut InterruptStackFrame) {
-	println!("Bound range exceeded");
+	println!("EXCEPTION: BOUND RANGE EXCEEDED\n{:#x?}", _stack_frame);
 }
 
 pub fn invalid_opcode(_stack_frame: &mut InterruptStackFrame) {
-	println!("Invalid opcode");
+	println!("EXCEPTION: INVALID OPCODE\n{:#x?}", _stack_frame);
 }
 
 pub fn coprocessor_not_available(_stack_frame: &mut InterruptStackFrame) {
-	println!("Coprocessor not available");
+	println!("EXCEPTION: COPROCESSOR NOT AVAILABLE\n{:#x?}", _stack_frame);
 }
 
 pub fn double_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("Double fault");
+	println!("EXCEPTION: DOUBLE FAULT\n{:#x?}", _stack_frame);
 }
 
 pub fn coprocessor_segment_overrun(_stack_frame: &mut InterruptStackFrame) {
-	println!("Coprocessor segment overrun");
+	println!("EXCEPTION: COPROCESSOR SEGMENT OVERRUN\n{:#x?}", _stack_frame);
 }
 
 pub fn invalid_task_state_segment(_stack_frame: &mut InterruptStackFrame) {
-	println!("Invalid task state segment");
+	println!("EXCEPTION: INVALID TASK STATE SEGMENT\n{:#x?}", _stack_frame);
 }
 
 pub fn segment_not_present(_stack_frame: &mut InterruptStackFrame) {
-	println!("Segment not present");
+	println!("EXCEPTION: SEGMENT NOT PRESENT\n{:#x?}", _stack_frame);
 }
 
 pub fn stack_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("Stack fault");
+	println!("EXCEPTION: STACK FAULT\n{:#x?}", _stack_frame);
 }
 
-pub extern "x86-interrupt" fn general_protection_fault(stack_frame: &mut InterruptStackFrame) {
-	print_serial!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#x?}", stack_frame);
+pub fn general_protection_fault(stack_frame: &mut InterruptStackFrame) {
+	println!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#x?}", stack_frame);
 }
 
 pub fn page_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("Page fault");
+	println!("EXCEPTION: PAGE FAULT\n{:#x?}", _stack_frame);
 }
 
 pub fn reserved(_stack_frame: &mut InterruptStackFrame) {
-	println!("Reserved");
+	println!("EXCEPTION: RESERVED\n{:#x?}", _stack_frame);
 }
 
 pub fn math_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("Math fault");
+	println!("EXCEPTION: MATH FAULT\n{:#x?}", _stack_frame);
 }
 
 pub fn alignment_check(_stack_frame: &mut InterruptStackFrame) {
-	println!("Alignment check");
+	println!("EXCEPTION: ALIGNMENT CHECK\n{:#x?}", _stack_frame);
 }
 
 pub fn machine_check(_stack_frame: &mut InterruptStackFrame) {
-	println!("Machine check");
+	println!("EXCEPTION: MACHINE CHECK\n{:#x?}", _stack_frame);
 }
 
 pub fn simd_floating_point_exception(_stack_frame: &mut InterruptStackFrame) {
-	println!("SIMD floating point exception");
+	println!("EXCEPTION: SIMD FLOATING POINT EXCEPTION\n{:#x?}", _stack_frame);
 }
 
 pub fn virtualization_exception(_stack_frame: &mut InterruptStackFrame) {
-	println!("Virtualization exception");
+	println!("EXCEPTION: VIRTUALIZATION EXCEPTION\n{:#x?}", _stack_frame);
 }
 
-pub extern "x86-interrupt" fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
+pub fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	unsafe {
 		PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 	}
 }
 
-pub extern "x86-interrupt" fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
+pub fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	use crate::keyboard::{KEYBOARD_INTERRUPT_RECEIVED, LAST_SCANCODE};
 	use core::sync::atomic::Ordering;
 	let scancode: u8 = unsafe { inb(0x60) };
