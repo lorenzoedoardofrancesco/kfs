@@ -108,6 +108,8 @@ fn help() {
     print_help_line("time", "print the time");
     print_help_line("date", "display the current date and time");
     print_help_line("miao", "print a cat");
+    print_help_line("uname", "print system information");
+    print_help_line("exept", "throw an exception");
     print_help_line("halt", "halt the system");
     print_help_line("reboot", "reboot the system");
     print_help_line("shutdown", "shutdown the system");
@@ -214,6 +216,21 @@ fn uname() {
     );
 }
 
+fn exept(line: &str) {
+    let message: &str = &line["exept".len()..];
+    if message.starts_with(" ") && message.len() > 1 {
+        let num: usize = message[1..].trim().parse::<usize>().unwrap_or(usize::MAX);
+        if num > 255 {
+            println!("exept: argument must be between 0 and 255");
+            return;
+        }
+
+        println!("{} {}", num, message[1..].trim());
+    } else {
+        println!("exept: missing argument");
+    }
+}
+
 pub fn readline(raw_line: &str) {
     let line = raw_line.trim();
     if line.is_empty() {
@@ -235,6 +252,8 @@ pub fn readline(raw_line: &str) {
         _ => {
             if line.starts_with("echo") {
                 echo(line);
+            } else if line.starts_with("exept") {
+                exept(line);
             } else {
                 let mut len = line.len();
                 if len > 50 {
