@@ -39,51 +39,51 @@ impl InterruptIndex {
 }
 
 #[derive(Debug)]
-#[repr(C)]
+#[repr(C, packed)]
 pub struct InterruptStackFrame {
-	instruction_pointer: usize,
-	code_segment: usize,
-	cpu_flags: usize,
-	stack_pointer: usize,
-	stack_segment: usize,
+	instruction_pointer: u32,
+	code_segment: u32,
+	cpu_flags: u32,
+	stack_pointer: u32,
+	stack_segment: u32,
 }
 
 #[macro_export]
 macro_rules! handler {
-    ($name: ident) => {{
-        #[naked]
-        extern "C" fn wrapper() {
-            unsafe {
-                asm!(
-                    // Set up stack frame
-                    "push ebp",
-                    "mov ebp, esp",
+	($name: ident) => {{
+		#[naked]
+		extern "C" fn wrapper() {
+			unsafe {
+				asm!(
+					// Set up stack frame
+					"push ebp",
+					"mov ebp, esp",
 
-                    // Save all general-purpose registers
-                    "pushad",
+					// Save all general-purpose registers
+					"pushad",
 
-                    // Calculate the correct stack frame pointer
-                    "mov eax, esp",
-                    "add eax, 36", // Adjust for 'pushad' and possibly other pushed registers
-                    "push eax", // Push stack frame pointer
+					// Calculate the correct stack frame pointer
+					"mov eax, esp",
+					"add eax, 36", // Adjust for 'pushad' and possibly other pushed registers
+					"push eax", // Push stack frame pointer
 
-                    // Call the actual interrupt handler
-                    "call {}",
+					// Call the actual interrupt handler
+					"call {}",
 
-                    // Restore all general-purpose registers
-                    "pop eax", // Clean up the stack
-                    "popad",
+					// Restore all general-purpose registers
+					"pop eax", // Clean up the stack
+					"popad",
 
-                    // Restore base pointer and return from interrupt
-                    "pop ebp",
-                    "iretd",
-                    sym $name,
-                    options(noreturn)
-                );
-            }
-        }
-        wrapper as extern "C" fn()
-    }};
+					// Restore base pointer and return from interrupt
+					"pop ebp",
+					"iretd",
+					sym $name,
+					options(noreturn)
+				);
+			}
+		}
+		wrapper as extern "C" fn()
+	}};
 }
 
 

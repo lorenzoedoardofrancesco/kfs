@@ -50,12 +50,29 @@ fn generate_interrupt(n: u8) {
 			0x1A => asm!("int 0x1A", options(nostack)),
 			0x1B => asm!("int 0x1B", options(nostack)),
 			0x1C => asm!("int 0x1C", options(nostack)),
+			0x1D => asm!("int 0x1D", options(nostack)),
+			0x1E => asm!("int 0x1E", options(nostack)),
+			0x1F => asm!("int 0x1F", options(nostack)),
+			0x20 => asm!("int 0x20", options(nostack)),
+			0x21 => asm!("int 0x21", options(nostack)),
+			0x22 => asm!("int 0x22", options(nostack)),
+			0x23 => asm!("int 0x23", options(nostack)),
             _ => panic!("Unsupported interrupt number"),
         }
     }
 }
 
-
+pub fn trigger_divide_by_zero() {
+    unsafe {
+        asm!(
+            "mov eax, 1",   // Load EAX with any non-zero value
+            "xor edx, edx", // Clear EDX to ensure clean division
+            "div edx",      // Divide EAX by zero (EDX is zero)
+            "nop",          // Placeholder instruction (not expected to execute)
+            options(noreturn)
+        );
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
@@ -67,8 +84,8 @@ pub extern "C" fn _start() -> ! {
 	//let test3 = 0x98765432 as u32;
 	//let test4 = 0x10fedcba as u32;
 	//println!("test1: {:x}, test2: {:x}, test3: {:x}, test4: {:x}", test1, test2, test3, test4);
+	trigger_divide_by_zero();
 	loop {
-		keyboard::process_keyboard_input();
 		librs::hlt();
 	}
 }
