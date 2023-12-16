@@ -1,75 +1,56 @@
 Pour Alix:
 
 Trouver comment ne pas mettre des mods et des use en chaque fichier
+faire des defines GDT pour etre clair
 
-//weird numpad input, removes char
 
 Pour Lorenzo:
 
+//weird numpad input, removes char
 Regler Makefile petit a petit
-X Display "42" on the screen. -> 3D 42 qui tourne, touche F10
+Regler les scancodes sur clavier: par example fleche du haute double scancode!!
+mettre infos sur la COM1
+regler printk
 
 
-
- _____
-|KFS-1|
-¯¯¯¯¯¯¯
-••• Mandatory 90%
+✓✓✓✓✓✓✓✓✓✓✓✓✓
+✓✓✓ KFS-1 ✓✓✓
+✓✓✓✓✓✓✓✓✓✓✓✓✓
+✓✓✓ Mandatory 120%
 ✓ Install GRUB on an virtual image
 ✓ Write an ASM boot code that handles multiboot header, and use GRUB to init and call main function of the kernel itself.
 ✓ Write basic kernel code of the choosen language.
-? Compile it with correct flags, and link it to make it bootable. -> a priori oui, a verifier bien
-✓ Once all of those steps above are done, you can write some helpers like kernel types or basic functions (strlen, strcmp, ...) -> sur Rust strlen et strcmp sont deja faites. Plutot creer quelque function originale
+✓ Compile it with correct flags, and link it to make it bootable.
+✓ Once all of those steps above are done, you can write some helpers like kernel types or basic functions (strlen, strcmp, ...)
 ✓ Your work must not exceed 10 MB.
 ✓ Code the interface between your kernel and the screen.
-X Display "42" on the screen. -> 3D 42 qui tourne, touche F10
-? For the link part, you must create a linker file with the GNU linker (ld). Some docs https://www.math.utah.edu/docs/info/ld_3.html#SEC4 . -> a regarder si c'est comme 42 veut
-
-••• Bonus 80%
+✓ Display "42" on the screen.
+✓ For the link part, you must create a linker file with the GNU linker (ld) For the link part, you must create a linker file with the GNU linker (ld). Some docs https://www.math.utah.edu/docs/info/ld_3.html#SEC4
+✓✓✓ Bonus 120%
 ✓ Add scroll and cursor support to your I/O interface.
 ✓ Add colors support to your I/O interface.
 ✓ Add helpers like printf / printk in order to print information / debug easily.
 ✓ Handle keyboard entries and print them.
-X Handle different screens, and keyboard shortcuts to switch easily between then. -> bidon
+✓ Handle different screens, and keyboard shortcuts to switch easily between then.
 
- _____
-|KFS-2|
-¯¯¯¯¯¯¯
-••• Mandatory 100%
+✓✓✓✓✓✓✓✓✓✓✓✓✓
+✓✓✓ KFS-2 ✓✓✓
+✓✓✓✓✓✓✓✓✓✓✓✓✓
+✓✓✓ Mandatory 118%
 ✓ You must create a Global Descriptor Table. Your GDT must contain:
-✓ Kernel Code
-✓ Kernel Data
-✓ Kernel stack
-✓ User code
-✓ User data
-✓ User stack
-✓ Your work should not exceed 10 MB.
-✓ You must declare your GDT to the BIOS. -> On declare pas au bios, on declare a grub.
+✓ Kernel Code ✓ Kernel Data ✓ Kernel stack ✓ User code ✓ User data ✓ User stack
+✓ You must declare your GDT to the BIOS.
 ✓ The GDT must be set at address 0x00000800.
 ✓ When this is done, you have to code a tool to print the kernel stack, in a human-friendly way. (Tip: If you haven’t made a printk yet, now is a good time !)
-
-••• Bonus 70%
-X Code a minimalistic shell with a few commands, for debugging purposes. Implement:
-✓ print_kernel_stack
-X reboot
-X halt
-X and such. -> ça veut dire quoi?
-
-Idees:
-✓ time
-X date
-✓ echo
-✓ clear
-✓ help
-X snake game (OUTSTANDING PROJECT)
-x pong game? Easy
-
+✓✓✓ Bonus 118%
+✓ Code a minimalistic shell with a few commands, for debugging purposes. Implement:
+✓ print_kernel_stack ✓ reboot ✓ halt ✓ time ✓ date ✓ echo ✓ clear ✓ help
  _____
 |KFS-4|
 ¯¯¯¯¯¯¯
 ••• Mandatory 50%
 ✓ Create an Interrupts Descriptor Table, fill it and register it
-? A signal-callback system on your Kernel API -> c'est les Handlers?
+? A signal-callback system on your Kernel API
 X An interface to schedule signals
 X An interface to clean registers before a panic / halt
 X An interface to save the stack before a panic

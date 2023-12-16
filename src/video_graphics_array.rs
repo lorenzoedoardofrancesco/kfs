@@ -1,7 +1,7 @@
-use crate::io::outb;
 use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
+use crate::io::outb;
 
 const NUM_SCREENS: usize = 4;
 const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS;

@@ -1,4 +1,5 @@
 use core::fmt;
+use crate::debug::DEBUG;
 use crate::interrupts;
 use crate::video_graphics_array::WRITER;
 
@@ -24,6 +25,12 @@ macro_rules! printk {
 	};
 }
 
+#[macro_export]
+macro_rules! print_serial {
+	($($arg:tt)*) => { $crate::librs::print_serial(format_args!($($arg)*));
+	};
+}
+
 pub fn print(args: fmt::Arguments) {
 	use core::fmt::Write;
 	interrupts::disable();
@@ -31,6 +38,14 @@ pub fn print(args: fmt::Arguments) {
 	interrupts::enable();
 }
 
+pub fn print_serial(args: fmt::Arguments) {
+	use core::fmt::Write;
+	interrupts::disable();
+	DEBUG.lock().write_fmt(args).unwrap();
+	interrupts::enable();
+}
+
+//je vais l'ecraser
 pub fn printraw(string: &str) {
 	interrupts::disable();
 	WRITER.lock().write_string_raw(string);
@@ -60,7 +75,7 @@ pub const KERN_INFO: &str = "KERN_INFO: ";
 pub const KERN_DEBUG: &str = "KERN_DEBUG: ";
 */
 
-pub fn printk(/*level: &str, */args: fmt::Arguments) {
+pub fn printk(/*level: &str, */ args: fmt::Arguments) {
 	use core::fmt::Write;
 	/*let mut writer = WRITER.lock();
 	writer.write_str(level).unwrap();
@@ -83,15 +98,13 @@ pub fn print_stack() {
 	printk!("Stack Pointer: {:#X}\n", stack_pointer);
 
 	const STACK_SIZE: usize = 256; // Define how much of the stack you want to read
-	let stack_data = unsafe {
-		core::slice::from_raw_parts(stack_pointer as *const u32, STACK_SIZE / 4)
-	};
-	
+	let stack_data =
+		unsafe { core::slice::from_raw_parts(stack_pointer as *const u32, STACK_SIZE / 4) };
+
 	for (offset, &value) in stack_data.iter().enumerate() {
-		printk!("{:#06x}: {:#010x} ", stack_pointer + offset * 4, value);
+		printk!("{:#06x}: {:#08x} ", stack_pointer + offset * 4, value);
 		if (offset + 1) % 4 == 0 {
 			printk!("\n");
 		}
 	}
-	
 }

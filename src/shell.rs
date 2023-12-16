@@ -223,7 +223,7 @@ pub fn readline(raw_line: &str) {
     match line {
         "help" | "man" => help(),
         "clear" => clear(),
-        "printk" => librs::print_stack(),
+        "printstack" => librs::print_stack(),
         "time" => time(),
         "miao" => miao(),
         "reboot" => reboot(),

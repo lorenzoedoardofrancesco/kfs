@@ -1,174 +1,112 @@
 use core::arch::asm;
 use lazy_static::lazy_static;
-use crate::debug::serial_println;
-use crate::interrupts::{ InterruptIndex, timer_interrupt, keyboard_interrupt };
+use crate::interrupts::InterruptIndex;
+use crate::interrupts::{ self, divide_by_zero, debug, non_maskable_interrupt, breakpoint, overflow, bound_range_exceeded, invalid_opcode, coprocessor_not_available, double_fault, coprocessor_segment_overrun, invalid_task_state_segment, segment_not_present, stack_fault, general_protection_fault, page_fault, reserved, math_fault, alignment_check, machine_check, simd_floating_point_exception, virtualization_exception };
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
-struct IDT_Descriptor {
-	offset_low: u16,
-	selector: u16,
-	reserved: u8,
-	type_attributes: u8,
-	offset_high: u16,
+struct IdtDescriptor {
+    offset_low: u16,
+    selector: u16,
+    reserved: u8,
+    type_attributes: u8,
+    offset_high: u16,
 }
 
-impl IDT_Descriptor {
-	fn new(offset: u32, selector: u16, type_attributes: u8) -> IDT_Descriptor {
-		IDT_Descriptor {
-			offset_low: (offset & 0xffff) as u16,
-			selector: selector,
-			reserved: 0,
-			type_attributes,
-			offset_high: ((offset >> 16) & 0xffff) as u16,
-		}
-	}
+impl IdtDescriptor {
+    fn new(offset: u32, selector: u16, type_attributes: u8) -> IdtDescriptor {
+        IdtDescriptor {
+            offset_low: (offset & 0xffff) as u16,
+            selector: selector,
+            reserved: 0,
+            type_attributes,
+            offset_high: ((offset >> 16) & 0xffff) as u16,
+        }
+    }
 }
 
-extern "C" fn divide_by_zero() {
-	serial_println("Divide by zero");
-}
-
-extern "C" fn debug() {
-	serial_println("Debug");
-}
-
-extern "C" fn non_maskable_interrupt() {
-	serial_println("Non-maskable interrupt");
-}
-
-extern "C" fn breakpoint() {
-	serial_println("Breakpoint");
-}
-
-extern "C" fn overflow() {
-	serial_println("Overflow");
-}
-
-extern "C" fn bound_range_exceeded() {
-	serial_println("Bound range exceeded");
-}
-
-extern "C" fn invalid_opcode() {
-	serial_println("Invalid opcode");
-}
-
-extern "C" fn coprocessor_not_available() {
-	serial_println("Coprocessor not available");
-}
-
-extern "C" fn double_fault() {
-	serial_println("Double fault");
-}
-
-extern "C" fn coprocessor_segment_overrun() {
-	serial_println("Coprocessor segment overrun");
-}
-
-extern "C" fn invalid_task_state_segment() {
-	serial_println("Invalid task state segment");
-}
-
-extern "C" fn segment_not_present() {
-	serial_println("Segment not present");
-}
-
-extern "C" fn stack_fault() {
-	serial_println("Stack fault");
-}
-
-extern "C" fn general_protection_fault() {
-	serial_println("General protection fault");
-}
-
-extern "C" fn page_fault() {
-	serial_println("Page fault");
-}
-
-extern "C" fn reserved() {
-	serial_println("Reserved");
-}
-
-extern "C" fn math_fault() {
-	serial_println("Math fault");
-}
-
-extern "C" fn alignment_check() {
-	serial_println("Alignment check");
-}
-
-extern "C" fn machine_check() {
-	serial_println("Machine check");
-}
-
-extern "C" fn simd_floating_point_exception() {
-	serial_println("SIMD floating point exception");
-}
-
-extern "C" fn virtualization_exception() {
-	serial_println("Virtualization exception");
-}
+static DIVIDE_BY_ZERO: extern "C" fn() = handler!(divide_by_zero);
+static DEBUGG: extern "C" fn() = handler!(debug);
+static NON_MASKABLE_INTERRUPT: extern "C" fn() = handler!(non_maskable_interrupt);
+static BREAKPOINT: extern "C" fn() = handler!(breakpoint);
+static OVERFLOW: extern "C" fn() = handler!(overflow);
+static BOUND_RANGE_EXCEEDED: extern "C" fn() = handler!(bound_range_exceeded);
+static INVALID_OPCODE: extern "C" fn() = handler!(invalid_opcode);
+static COPROCESSOR_NOT_AVAILABLE: extern "C" fn() = handler!(coprocessor_not_available);
+static DOUBLE_FAULT: extern "C" fn() = handler!(double_fault);
+static COPROCESSOR_SEGMENT_OVERRUN: extern "C" fn() = handler!(coprocessor_segment_overrun);
+static INVALID_TASK_STATE_SEGMENT: extern "C" fn() = handler!(invalid_task_state_segment);
+static SEGMENT_NOT_PRESENT: extern "C" fn() = handler!(segment_not_present);
+static STACK_FAULT: extern "C" fn() = handler!(stack_fault);
+static GENERAL_PROTECTION_FAULT: extern "C" fn() = handler!(general_protection_fault);
+static PAGE_FAULT: extern "C" fn() = handler!(page_fault);
+static RESERVED: extern "C" fn() = handler!(reserved);
+static MATH_FAULT: extern "C" fn() = handler!(math_fault);
+static ALIGNMENT_CHECK: extern "C" fn() = handler!(alignment_check);
+static MACHINE_CHECK: extern "C" fn() = handler!(machine_check);
+static SIMD_FLOATING_POINT_EXCEPTION: extern "C" fn() = handler!(simd_floating_point_exception);
+static VIRTUALIZATION_EXCEPTION: extern "C" fn() = handler!(virtualization_exception);
 
 lazy_static! {
-	#[link_section = ".idt"]
-	static ref IDT: [IDT_Descriptor; 256] = {
-		let mut idt = [IDT_Descriptor::new(0, 0, 0); 256];
+    #[link_section = ".idt"]
+    static ref IDT: [IdtDescriptor; 256] = {
+        let mut idt = [IdtDescriptor::new(0, 0, 0); 256];
 
-		idt[0] = IDT_Descriptor::new(divide_by_zero as u32, 0x08, 0x8e);
-		idt[1] = IDT_Descriptor::new(debug as u32, 0x08, 0x8e);
-		idt[2] = IDT_Descriptor::new(non_maskable_interrupt as u32, 0x08, 0x8e);
-		idt[3] = IDT_Descriptor::new(breakpoint as u32, 0x08, 0x8e);
-		idt[4] = IDT_Descriptor::new(overflow as u32, 0x08, 0x8e);
-		idt[5] = IDT_Descriptor::new(bound_range_exceeded as u32, 0x08, 0x8e);
-		idt[6] = IDT_Descriptor::new(invalid_opcode as u32, 0x08, 0x8e);
-		idt[7] = IDT_Descriptor::new(coprocessor_not_available as u32, 0x08, 0x8e);
-		idt[8] = IDT_Descriptor::new(double_fault as u32, 0x08, 0x8f);
-		idt[9] = IDT_Descriptor::new(coprocessor_segment_overrun as u32, 0x08, 0x8f);
-		idt[10] = IDT_Descriptor::new(invalid_task_state_segment as u32, 0x08, 0x8f);
-		idt[11] = IDT_Descriptor::new(segment_not_present as u32, 0x08, 0x8f);
-		idt[12] = IDT_Descriptor::new(stack_fault as u32, 0x08, 0x8f);
-		idt[13] = IDT_Descriptor::new(general_protection_fault as u32, 0x08, 0x8f);
-		idt[14] = IDT_Descriptor::new(page_fault as u32, 0x08, 0x8f);
-		idt[15] = IDT_Descriptor::new(reserved as u32, 0x08, 0x8f);
-		idt[16] = IDT_Descriptor::new(math_fault as u32, 0x08, 0x8e);
-		idt[17] = IDT_Descriptor::new(alignment_check as u32, 0x08, 0x8f);
-		idt[18] = IDT_Descriptor::new(machine_check as u32, 0x08, 0x8f);
-		idt[19] = IDT_Descriptor::new(simd_floating_point_exception as u32, 0x08, 0x8e);
-		idt[20] = IDT_Descriptor::new(virtualization_exception as u32, 0x08, 0x8f);
-		idt[InterruptIndex::Timer.as_usize()] = IDT_Descriptor::new(
-			timer_interrupt as u32,
-			0x08,
-			0x8e
-		);
-		idt[InterruptIndex::Keyboard.as_usize()] = IDT_Descriptor::new(
-			keyboard_interrupt as u32,
-			0x08,
-			0x8e
-		);
-		/*
-		idt[InterruptIndex::Rtc.as_usize()] = IDT_Descriptor::new(
-			rtc_interrupt as u32,
-			0x08,
-			0x8e
-		);
-		 */
-		idt
-	};
+        idt[0] = IdtDescriptor::new(DIVIDE_BY_ZERO as u32, 0x08, 0x8e);
+        idt[1] = IdtDescriptor::new(DEBUGG as u32, 0x08, 0x8e);
+        idt[2] = IdtDescriptor::new(NON_MASKABLE_INTERRUPT as u32, 0x08, 0x8e);
+        idt[3] = IdtDescriptor::new(BREAKPOINT as u32, 0x08, 0x8e);
+        idt[4] = IdtDescriptor::new(OVERFLOW as u32, 0x08, 0x8e);
+        idt[5] = IdtDescriptor::new(BOUND_RANGE_EXCEEDED as u32, 0x08, 0x8e);
+        idt[6] = IdtDescriptor::new(INVALID_OPCODE as u32, 0x08, 0x8e);
+        idt[7] = IdtDescriptor::new(COPROCESSOR_NOT_AVAILABLE as u32, 0x08, 0x8e);
+        idt[8] = IdtDescriptor::new(DOUBLE_FAULT as u32, 0x08, 0x8e);
+        idt[9] = IdtDescriptor::new(COPROCESSOR_SEGMENT_OVERRUN as u32, 0x08, 0x8e);
+        idt[10] = IdtDescriptor::new(INVALID_TASK_STATE_SEGMENT as u32, 0x08, 0x8e);
+        idt[11] = IdtDescriptor::new(SEGMENT_NOT_PRESENT as u32, 0x08, 0x8e);
+        idt[12] = IdtDescriptor::new(STACK_FAULT as u32, 0x08, 0x8e);
+        idt[13] = IdtDescriptor::new(GENERAL_PROTECTION_FAULT as u32, 0x08, 0x8e);
+        idt[14] = IdtDescriptor::new(PAGE_FAULT as u32, 0x08, 0x8e);
+        idt[15] = IdtDescriptor::new(RESERVED as u32, 0x08, 0x8e);
+        idt[16] = IdtDescriptor::new(MATH_FAULT as u32, 0x08, 0x8e);
+        idt[17] = IdtDescriptor::new(ALIGNMENT_CHECK as u32, 0x08, 0x8e);
+        idt[18] = IdtDescriptor::new(MACHINE_CHECK as u32, 0x08, 0x8e);
+        idt[19] = IdtDescriptor::new(SIMD_FLOATING_POINT_EXCEPTION as u32, 0x08, 0x8e);
+        idt[20] = IdtDescriptor::new(VIRTUALIZATION_EXCEPTION as u32, 0x08, 0x8e);
+        idt[InterruptIndex::Timer.as_usize()] = IdtDescriptor::new(
+            interrupts::timer_interrupt as u32, // TODO: fix this (timer_interrupt as u32
+            0x08,
+            0x8e
+        );
+        idt[InterruptIndex::Keyboard.as_usize()] = IdtDescriptor::new(
+            interrupts::keyboard_interrupt as u32,
+            0x08,
+            0x8e
+        );
+        /*
+        idt[InterruptIndex::Rtc.as_usize()] = IdtDescriptor::new(
+            rtc_interrupt as u32,
+            0x08,
+            0x8e
+        );
+         */
+        idt
+    };
 }
 
 #[repr(C, packed)]
-struct IDT_Register {
-	size: u16,
-	offset: u32,
+struct IdtRegister {
+    size: u16,
+    offset: u32,
 }
 
 pub fn init() {
-	unsafe {
-		let idt_register = IDT_Register {
-			size: (core::mem::size_of::<[IDT_Descriptor; 256]>() - 1) as u16,
-			offset: IDT.as_ptr() as u32,
-		};
+    unsafe {
+        let idt_register = IdtRegister {
+            size: (core::mem::size_of::<[IdtDescriptor; 256]>() - 1) as u16,
+            offset: IDT.as_ptr() as u32,
+        };
 
-		asm!("lidt [{}]", in(reg) &idt_register, options(readonly, nostack, preserves_flags));
-	}
+        asm!("lidt [{}]", in(reg) &idt_register, options(readonly, nostack, preserves_flags));
+    }
 }
