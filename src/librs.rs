@@ -95,14 +95,14 @@ pub fn print_stack() {
 	unsafe {
 		asm!("mov {}, esp", out(reg) stack_pointer, options(nomem, nostack));
 	}
-	printk!("Stack Pointer: {:#X}\n", stack_pointer);
+	printk!("Stack Pointer: {:#8x}\n", stack_pointer);
 
 	const STACK_SIZE: usize = 256; // Define how much of the stack you want to read
 	let stack_data =
 		unsafe { core::slice::from_raw_parts(stack_pointer as *const u32, STACK_SIZE / 4) };
 
 	for (offset, &value) in stack_data.iter().enumerate() {
-		printk!("{:#06x}: {:#08x} ", stack_pointer + offset * 4, value);
+		printk!("{:#8x}|{:#8x} ", stack_pointer + offset * 4, value);
 		if (offset + 1) % 4 == 0 {
 			printk!("\n");
 		}

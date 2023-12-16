@@ -1,5 +1,6 @@
 use crate::io::inb;
 use crate::pic8259::ChainedPics;
+use crate::prompt::PROMPT;
 use spin::Mutex;
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -41,49 +42,51 @@ impl InterruptIndex {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-	instruction_pointer: u32,
-	code_segment: u32,
-	cpu_flags: u32,
-	stack_pointer: u32,
-	stack_segment: u32,
+	instruction_pointer: usize,
+	code_segment: usize,
+	cpu_flags: usize,
+	stack_pointer: usize,
+	stack_segment: usize,
 }
 
 #[macro_export]
 macro_rules! handler {
-	($name: ident) => {{
-		#[naked]
-		extern "C" fn wrapper() {
-			unsafe {
-				asm!(
-					// Save scratch registers
-					"push eax",
-					"push ecx",
-					"push edx",
-					"push ebx",
+    ($name: ident) => {{
+        #[naked]
+        extern "C" fn wrapper() {
+            unsafe {
+                asm!(
+                    // Set up stack frame
+                    "push ebp",
+                    "mov ebp, esp",
 
-					// Setup for interrupt handler call
-					"mov eax, esp",
-					"add eax, 4*4",
-					"push eax",
-					"call {}",
+                    // Save all general-purpose registers
+                    "pushad",
 
-					// Restore scratch registers
-					"pop ebx",
-					"pop edx",
-					"pop ecx",
-					"pop eax",
+                    // Calculate the correct stack frame pointer
+                    "mov eax, esp",
+                    "add eax, 36", // Adjust for 'pushad' and possibly other pushed registers
+                    "push eax", // Push stack frame pointer
 
-					// Return from interrupt
-					"iretd",
+                    // Call the actual interrupt handler
+                    "call {}",
 
-					sym $name,
-					options(noreturn)
-				);
-			}
-		}
-		wrapper as extern "C" fn()
-	}};
+                    // Restore all general-purpose registers
+                    "pop eax", // Clean up the stack
+                    "popad",
+
+                    // Restore base pointer and return from interrupt
+                    "pop ebp",
+                    "iretd",
+                    sym $name,
+                    options(noreturn)
+                );
+            }
+        }
+        wrapper as extern "C" fn()
+    }};
 }
+
 
 pub extern "C" fn divide_by_zero(_stack_frame: &mut InterruptStackFrame) {
 	println!("EXCEPTION: DIVIDE BY ZERO\n");
@@ -98,8 +101,8 @@ pub extern "C" fn non_maskable_interrupt(_stack_frame: &mut InterruptStackFrame)
 }
 
 pub extern "C" fn breakpoint(_stack_frame: &mut InterruptStackFrame) {
-	print!("instruction_pointer: {:#08x}, code_segment: {:#08x}, cpu_flags: {:#08x}, stack_pointer: {:#08x}, stack_segment: {:#08x}\n", _stack_frame.instruction_pointer, _stack_frame.code_segment, _stack_frame.cpu_flags, _stack_frame.stack_pointer, _stack_frame.stack_segment);
-	crate::librs::print_stack();
+	println!("EXCEPTION: BREAKPOINT\n{:#x?}", _stack_frame);
+	PROMPT.lock().init();
 }
 
 pub fn overflow(_stack_frame: &mut InterruptStackFrame) {
@@ -138,8 +141,8 @@ pub fn stack_fault(_stack_frame: &mut InterruptStackFrame) {
 	println!("Stack fault");
 }
 
-pub fn general_protection_fault(_stack_frame: &mut InterruptStackFrame) {
-	print_serial!("instruction_pointer: {:#08x}, code_segment: {:#08x}, cpu_flags: {:#08x}, stack_pointer: {:#08x}, stack_segment: {:#08x}\n", _stack_frame.instruction_pointer, _stack_frame.code_segment, _stack_frame.cpu_flags, _stack_frame.stack_pointer, _stack_frame.stack_segment);
+pub extern "x86-interrupt" fn general_protection_fault(stack_frame: &mut InterruptStackFrame) {
+	print_serial!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#x?}", stack_frame);
 }
 
 pub fn page_fault(_stack_frame: &mut InterruptStackFrame) {
@@ -172,8 +175,7 @@ pub fn virtualization_exception(_stack_frame: &mut InterruptStackFrame) {
 
 pub extern "x86-interrupt" fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	unsafe {
-		PICS.lock()
-			.notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+		PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 	}
 }
 
@@ -186,8 +188,7 @@ pub extern "x86-interrupt" fn keyboard_interrupt(_stack_frame: &mut InterruptSta
 	KEYBOARD_INTERRUPT_RECEIVED.store(true, Ordering::SeqCst);
 
 	unsafe {
-		PICS.lock()
-			.notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+		PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
 	}
 }
 

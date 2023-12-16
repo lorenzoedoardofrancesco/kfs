@@ -65,7 +65,7 @@ lazy_static! {
         idt[10] = IdtDescriptor::new(INVALID_TASK_STATE_SEGMENT as u32, 0x08, 0x8e);
         idt[11] = IdtDescriptor::new(SEGMENT_NOT_PRESENT as u32, 0x08, 0x8e);
         idt[12] = IdtDescriptor::new(STACK_FAULT as u32, 0x08, 0x8e);
-        idt[13] = IdtDescriptor::new(GENERAL_PROTECTION_FAULT as u32, 0x08, 0x8e);
+        idt[13] = IdtDescriptor::new(interrupts::general_protection_fault as u32, 0x08, 0x8e);
         idt[14] = IdtDescriptor::new(PAGE_FAULT as u32, 0x08, 0x8e);
         idt[15] = IdtDescriptor::new(RESERVED as u32, 0x08, 0x8e);
         idt[16] = IdtDescriptor::new(MATH_FAULT as u32, 0x08, 0x8e);
