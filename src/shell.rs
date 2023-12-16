@@ -1,8 +1,8 @@
-use crate::prompt::PROMPT;
-use crate::video_graphics_array::WRITER;
-use crate::librs::{self, printraw};
 use lazy_static::lazy_static;
 use spin::Mutex;
+use crate::librs::{self, printraw};
+use crate::prompt::PROMPT;
+use crate::video_graphics_array::WRITER;
 
 const CMOS_ADDRESS: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
@@ -106,29 +106,39 @@ fn print_help_line(command: &str, description: &str) {
     print!("  {:13}", command);
     printraw("Z");
     print!("  {:60}", description);
-    if command != "F11-F12" {
-      printraw("ZZ");
+    if command == "shutdown" {
+        printraw("Z");
+    } else if command != "F12" {
+        printraw("ZZ");
     }
 }
 
 fn help() {
     clear();
     printraw("immmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm[Z");
-    print!(" Available commands:                                                          ");
+    print!(" Available commands                                                           ");
     printraw("ZlmmmmmmmmmmmmmmmkmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
-    print_help_line("help", "display this help message");
+    print_help_line("echo", "display a line of text");
     print_help_line("clear", "clear the screen");
-    print_help_line("echo", "display the arguments");
-    print_help_line("printk", "print the stack");
+    print_help_line("printstack", "print the stack");
     print_help_line("time", "print the time");
+    print_help_line("date", "display the current date and time");
     print_help_line("miao", "print a cat");
-    print_help_line("reboot", "reboot the system");
     print_help_line("halt", "halt the system");
+    print_help_line("reboot", "reboot the system");
     print_help_line("shutdown", "shutdown the system");
-    print_help_line("F1-F4", "switch to tty1-4");
-    print_help_line("F11-F12", "switch tty colors");
+    printraw("lmmmmmmmmmmmmmmmnmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
+    print_help_line("F1-F4", "change between screens");
+    print_help_line("F9", "display welcome message");
+    print_help_line("F10", "change keyboard layout");
+    print_help_line("F11", "switch text color");
+    print_help_line("F12", "switch background color");
+
     printraw("ZlmmmmmmmmmmmmmmmjmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
-    print!(" Type 'history' to view command history                                       ");
+    print!(
+        " Type 'history' to view command history           {} {} navigate history        ",
+        0x1e as char, 0x1f as char
+    );
     printraw("Zhmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm\\");
     println!("");
 }
