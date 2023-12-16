@@ -86,22 +86,6 @@ fn bcd_to_binary(bcd: u8) -> u8 {
     ((bcd & 0xf0) >> 4) * 10 + (bcd & 0x0f)
 }
 
-fn read_cmos(register: u8) -> u8 {
-    unsafe {
-        use crate::io::{inb, outb};
-        outb(CMOS_ADDRESS, register);
-        inb(CMOS_DATA)
-    }
-}
-
-fn get_rtc_time() -> (u8, u8, u8) {
-    let seconds = bcd_to_binary(read_cmos(0x00));
-    let minutes = bcd_to_binary(read_cmos(0x02));
-    let hours = bcd_to_binary(read_cmos(0x04));
-
-    (hours, minutes, seconds)
-}
-
 fn print_help_line(command: &str, description: &str) {
     print!("  {:13}", command);
     printraw("Z");
@@ -146,9 +130,45 @@ fn echo(line: &str) {
     }
 }
 
+fn read_cmos(register: u8) -> u8 {
+    unsafe {
+        use crate::io::{inb, outb};
+        outb(CMOS_ADDRESS, register);
+        inb(CMOS_DATA)
+    }
+}
+
+fn get_rtc_time() -> (u8, u8, u8) {
+    let seconds = bcd_to_binary(read_cmos(0x00));
+    let minutes = bcd_to_binary(read_cmos(0x02));
+    let hours = bcd_to_binary(read_cmos(0x04));
+
+    (hours, minutes, seconds)
+}
+
+fn get_rtc_date() -> (u8, u8, u8) {
+    let year = bcd_to_binary(read_cmos(0x09));
+    let month = bcd_to_binary(read_cmos(0x08));
+    let day = bcd_to_binary(read_cmos(0x07));
+
+    (year, month, day)
+}
+
 fn time() {
     let (hours, minutes, seconds) = get_rtc_time();
     println!("{:02}:{:02}:{:02}", hours, minutes, seconds);
+}
+
+fn date() {
+    let (hours, minutes, seconds) = get_rtc_time();
+    let (year, month, day) = get_rtc_date();
+
+    let full_year = 2000 + year as u16;
+
+    println!(
+        "{:02}/{:02}/{:02} {:02}:{:02}:{:02}",
+        day, month, full_year, hours, minutes, seconds
+    );
 }
 
 fn miao() {
@@ -170,15 +190,6 @@ fn shutdown() {
         use crate::io::outw;
         outw(0x604, 0x2000);
     }
-}
-
-fn date() {
-    let (hours, minutes, seconds) = get_rtc_time();
-    let (year, month, day) = (read_cmos(0x09), read_cmos(0x08), read_cmos(0x07));
-    println!(
-        "{:02}/{:02}/{:02} {:02}:{:02}:{:02}",
-        year, month, day, hours, minutes, seconds
-    );
 }
 
 fn uname() {
