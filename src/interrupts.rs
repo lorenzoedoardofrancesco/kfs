@@ -102,7 +102,6 @@ pub extern "C" fn non_maskable_interrupt(_stack_frame: &mut InterruptStackFrame)
 
 pub extern "C" fn breakpoint(_stack_frame: &mut InterruptStackFrame) {
 	println!("EXCEPTION: BREAKPOINT\n{:#x?}", _stack_frame);
-	PROMPT.lock().init();
 }
 
 pub fn overflow(_stack_frame: &mut InterruptStackFrame) {

@@ -67,7 +67,6 @@ pub extern "C" fn _start() -> ! {
 	//let test3 = 0x98765432 as u32;
 	//let test4 = 0x10fedcba as u32;
 	//println!("test1: {:x}, test2: {:x}, test3: {:x}, test4: {:x}", test1, test2, test3, test4);
-	generate_interrupt(0x03);
 	loop {
 		keyboard::process_keyboard_input();
 		librs::hlt();

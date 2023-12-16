@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
+use crate::generate_interrupt;
 use crate::librs::{self, printraw};
 use crate::prompt::PROMPT;
 use crate::video_graphics_array::WRITER;
@@ -224,8 +225,8 @@ fn exept(line: &str) {
             println!("exept: argument must be between 0 and 255");
             return;
         }
-
-        println!("{} {}", num, message[1..].trim());
+        println!("exept: throwing exception {}", num);
+        generate_interrupt(num as u8);
     } else {
         println!("exept: missing argument");
     }
