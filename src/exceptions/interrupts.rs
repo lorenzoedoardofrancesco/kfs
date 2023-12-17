@@ -1,6 +1,8 @@
-use crate::io::inb;
-use crate::pic8259::ChainedPics;
 use spin::Mutex;
+use core::sync::atomic::Ordering;
+use crate::utils::io::inb;
+use crate::exceptions::pic8259::ChainedPics;
+use crate::exceptions::keyboard::{KEYBOARD_INTERRUPT_RECEIVED, LAST_SCANCODE};
 
 pub const PIC_1_OFFSET: u8 = 32;
 
@@ -47,45 +49,6 @@ pub struct InterruptStackFrame {
 	stack_pointer: u32,
 	stack_segment: u32,
 }
-
-#[macro_export]
-macro_rules! handler {
-	($name: ident) => {{
-		#[naked]
-		extern "C" fn wrapper() {
-			unsafe {
-				asm!(
-					// Set up stack frame
-					"push ebp",
-					"mov ebp, esp",
-
-					// Save all general-purpose registers
-					"pushad",
-
-					// Calculate the correct stack frame pointer
-					"mov eax, esp",
-					"add eax, 36", // Adjust for 'pushad' and possibly other pushed registers
-					"push eax", // Push stack frame pointer
-
-					// Call the actual interrupt handler
-					"call {}",
-
-					// Restore all general-purpose registers
-					"pop eax", // Clean up the stack
-					"popad",
-
-					// Restore base pointer and return from interrupt
-					"pop ebp",
-					"iretd",
-					sym $name,
-					options(noreturn)
-				);
-			}
-		}
-		wrapper as extern "C" fn()
-	}};
-}
-
 
 pub extern "C" fn divide_by_zero(_stack_frame: &mut InterruptStackFrame) {
 	println!("EXCEPTION: DIVIDE BY ZERO\n{:#x?}", _stack_frame);
@@ -179,8 +142,6 @@ pub fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
 }
 
 pub fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
-	use crate::keyboard::{KEYBOARD_INTERRUPT_RECEIVED, LAST_SCANCODE};
-	use core::sync::atomic::Ordering;
 	let scancode: u8 = unsafe { inb(0x60) };
 
 	*LAST_SCANCODE.lock() = scancode;

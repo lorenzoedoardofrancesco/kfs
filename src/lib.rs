@@ -3,20 +3,17 @@
 #![feature(naked_functions)]
 
 #[macro_use] mod librs;
-#[macro_use] mod interrupts;
-mod debug;
-mod gdt;
-mod idt;
-mod io;
-mod keyboard;
-mod memory;
-mod pic8259;
-mod prompt;
-mod shell;
-mod video_graphics_array;
+
+mod exceptions;
+mod structures;
+mod utils;
+mod vga;
 
 use core::arch::asm;
 use core::panic::PanicInfo;
+use structures::{ gdt, idt };
+use utils::{ debug, shell };
+use exceptions::{ keyboard::process_keyboard_input, interrupts };
 
 fn generate_interrupt(n: u8) {
 	unsafe {
@@ -228,7 +225,7 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	}
 
 	loop {
-		keyboard::process_keyboard_input();
+		process_keyboard_input();
 		librs::hlt();
 	}
 }

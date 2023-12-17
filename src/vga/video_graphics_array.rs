@@ -1,7 +1,8 @@
 use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::io::outb;
+use crate::utils::io::outb;
+use crate::vga::prompt::PROMPT;
 
 const NUM_SCREENS: usize = 4;
 const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS;
@@ -260,14 +261,13 @@ impl Writer {
 }
 
 pub fn change_display(display: usize) {
-    use crate::prompt;
     if WRITER.lock().current_display == display {
         return;
     }
     WRITER.lock().backup_display();
     WRITER.lock().restore_display(display);
     WRITER.lock().current_display = display;
-    prompt::PROMPT.lock().init();
+    PROMPT.lock().init();
 }
 
 pub fn change_color(foreground: bool) {

@@ -1,7 +1,7 @@
 use core::sync::atomic::{ AtomicBool, Ordering };
 use spin::Mutex;
-use crate::{ prompt, shell::HISTORY, shell::print_welcome_message };
-use crate::video_graphics_array;
+use crate::vga::{ video_graphics_array, prompt };
+use crate::utils::shell::{ HISTORY, print_welcome_message };
 
 pub static KEYBOARD_INTERRUPT_RECEIVED: AtomicBool = AtomicBool::new(false);
 pub static LAST_SCANCODE: Mutex<u8> = Mutex::new(0);

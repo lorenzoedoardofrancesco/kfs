@@ -1,7 +1,7 @@
 use core::fmt;
 use crate::debug::DEBUG;
-use crate::interrupts;
-use crate::video_graphics_array::WRITER;
+use crate::exceptions::interrupts;
+use crate::vga::video_graphics_array::WRITER;
 
 #[macro_export]
 macro_rules! print {
@@ -29,6 +29,44 @@ macro_rules! printk {
 macro_rules! print_serial {
 	($($arg:tt)*) => { $crate::librs::print_serial(format_args!($($arg)*));
 	};
+}
+
+#[macro_export]
+macro_rules! handler {
+	($name: ident) => {{
+		#[naked]
+		extern "C" fn wrapper() {
+			unsafe {
+				asm!(
+					// Set up stack frame
+					"push ebp",
+					"mov ebp, esp",
+
+					// Save all general-purpose registers
+					"pushad",
+
+					// Calculate the correct stack frame pointer
+					"mov eax, esp",
+					"add eax, 36", // Adjust for 'pushad' and possibly other pushed registers
+					"push eax", // Push stack frame pointer
+
+					// Call the actual interrupt handler
+					"call {}",
+
+					// Restore all general-purpose registers
+					"pop eax", // Clean up the stack
+					"popad",
+
+					// Restore base pointer and return from interrupt
+					"pop ebp",
+					"iretd",
+					sym $name,
+					options(noreturn)
+				);
+			}
+		}
+		wrapper as extern "C" fn()
+	}};
 }
 
 pub fn print(args: fmt::Arguments) {

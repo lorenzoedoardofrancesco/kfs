@@ -2,8 +2,9 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use crate::generate_interrupt;
 use crate::librs::{self, printraw};
-use crate::prompt::PROMPT;
-use crate::video_graphics_array::WRITER;
+use crate::vga::{prompt::PROMPT , video_graphics_array::WRITER };
+use crate::utils::io::{ outb, outw, inb };
+
 
 const CMOS_ADDRESS: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
@@ -110,7 +111,7 @@ fn help() {
     print_help_line("date", "display the current date and time");
     print_help_line("miao", "print a cat");
     print_help_line("uname", "print system information");
-    print_help_line("exept", "throw an exception");
+    print_help_line("except", "throw an exception");
     print_help_line("halt", "halt the system");
     print_help_line("reboot", "reboot the system");
     print_help_line("shutdown", "shutdown the system");
@@ -145,7 +146,6 @@ fn echo(line: &str) {
 
 fn read_cmos(register: u8) -> u8 {
     unsafe {
-        use crate::io::{inb, outb};
         outb(CMOS_ADDRESS, register);
         inb(CMOS_DATA)
     }
@@ -193,14 +193,12 @@ fn miao() {
 
 fn reboot() {
     unsafe {
-        use crate::io::outb;
         outb(0x64, 0xfe);
     }
 }
 
 fn shutdown() {
     unsafe {
-        use crate::io::outw;
         outw(0x604, 0x2000);
     }
 }
@@ -217,18 +215,18 @@ fn uname() {
     );
 }
 
-fn exept(line: &str) {
-    let message: &str = &line["exept".len()..];
+fn except(line: &str) {
+    let message: &str = &line["except".len()..];
     if message.starts_with(" ") && message.len() > 1 {
         let num: usize = message[1..].trim().parse::<usize>().unwrap_or(usize::MAX);
         if num > 255 {
-            println!("exept: argument must be between 0 and 255");
+            println!("except: argument must be between 0 and 255");
             return;
         }
-        println!("exept: throwing exception {}", num);
+        println!("except: throwing exception {}", num);
         generate_interrupt(num as u8);
     } else {
-        println!("exept: missing argument");
+        println!("except: missing argument");
     }
 }
 
@@ -253,8 +251,8 @@ pub fn readline(raw_line: &str) {
         _ => {
             if line.starts_with("echo") {
                 echo(line);
-            } else if line.starts_with("exept") {
-                exept(line);
+            } else if line.starts_with("except") {
+                except(line);
             } else {
                 let mut len = line.len();
                 if len > 50 {
@@ -293,3 +291,16 @@ pub fn print_welcome_message() {
     println!("                       Welcome to KFC! Type 'help' for a list of commands!");
     PROMPT.lock().init();
 }
+
+
+    // Y    ┤
+    // Z    ||
+    // [    ┐
+    // \\   ┘
+    // h    └
+    // i    ┌
+    // j    ┴
+    // k    ┬
+    // l    ├
+    // m    ─
+    // n    ┼

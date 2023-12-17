@@ -1,7 +1,7 @@
 use core::arch::asm;
 use lazy_static::lazy_static;
-use crate::interrupts::InterruptIndex;
-use crate::interrupts::{ divide_by_zero, debug, non_maskable_interrupt, breakpoint, overflow, bound_range_exceeded, invalid_opcode, coprocessor_not_available, double_fault, coprocessor_segment_overrun, invalid_task_state_segment, segment_not_present, stack_fault, general_protection_fault, page_fault, reserved, math_fault, alignment_check, machine_check, simd_floating_point_exception, virtualization_exception, timer_interrupt, keyboard_interrupt };
+use crate::exceptions::interrupts::InterruptIndex;
+use crate::exceptions::interrupts::{ divide_by_zero, debug, non_maskable_interrupt, breakpoint, overflow, bound_range_exceeded, invalid_opcode, coprocessor_not_available, double_fault, coprocessor_segment_overrun, invalid_task_state_segment, segment_not_present, stack_fault, general_protection_fault, page_fault, reserved, math_fault, alignment_check, machine_check, simd_floating_point_exception, virtualization_exception, timer_interrupt, keyboard_interrupt };
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]

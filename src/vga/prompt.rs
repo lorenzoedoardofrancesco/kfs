@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::video_graphics_array::{ WRITER, VGA_COLUMNS, VGA_LAST_LINE };
+use crate::vga::video_graphics_array::{ WRITER, VGA_COLUMNS, VGA_LAST_LINE };
 use crate::shell::readline;
 
 pub static PROMPT_STRING: &str = "$> ";

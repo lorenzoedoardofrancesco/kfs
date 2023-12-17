@@ -1,4 +1,4 @@
-use crate::io::{ inb, outb };
+use crate::utils::io::{ inb, outb };
 
 const CMD_INIT: u8 = 0x11;
 const CMD_END_OF_INTERRUPT: u8 = 0x20;
