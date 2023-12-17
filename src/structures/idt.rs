@@ -3,6 +3,7 @@ use lazy_static::lazy_static;
 use crate::exceptions::interrupts::InterruptIndex;
 use crate::exceptions::interrupts::{ divide_by_zero, debug, non_maskable_interrupt, breakpoint, overflow, bound_range_exceeded, invalid_opcode, coprocessor_not_available, double_fault, coprocessor_segment_overrun, invalid_task_state_segment, segment_not_present, stack_fault, general_protection_fault, page_fault, reserved, math_fault, alignment_check, machine_check, simd_floating_point_exception, virtualization_exception, timer_interrupt, keyboard_interrupt };
 
+/// Interrupt Descriptor Table descriptor structure.
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
 struct IdtDescriptor {
@@ -14,6 +15,7 @@ struct IdtDescriptor {
 }
 
 impl IdtDescriptor {
+	/// Creates a new IDT entry.
 	fn new(offset: u32, selector: u16, type_attributes: u8) -> IdtDescriptor {
 		IdtDescriptor {
 			offset_low: (offset & 0xffff) as u16,
@@ -88,12 +90,14 @@ lazy_static! {
 	};
 }
 
+/// Interrupt Descriptor Table register structure.
 #[repr(C, packed)]
 struct IdtRegister {
 	size: u16,
 	offset: u32,
 }
 
+/// Loads the IDT.
 pub fn init() {
 	unsafe {
 		let idt_register = IdtRegister {

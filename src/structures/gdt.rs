@@ -1,6 +1,7 @@
 use core::arch::asm;
 use lazy_static::lazy_static;
 
+/// Global Descriptor Table entry structure.
 #[repr(C, packed)]
 struct GdtEntry {
 	limit_low: u16,
@@ -12,6 +13,7 @@ struct GdtEntry {
 }
 
 impl GdtEntry {
+	/// Creates a new GDT entry.
 	fn new(limit: u32, base: u32, access: u8, granularity: u8) -> GdtEntry {
 		GdtEntry {
 			limit_low: (limit & 0xffff) as u16,
@@ -37,12 +39,14 @@ lazy_static! {
 	];
 }
 
+/// Global Descriptor Table register structure.
 #[repr(C, packed)]
 struct GdtRegister {
 	size: u16,
 	offset: u32,
 }
 
+/// Loads the GDT.
 unsafe fn load_gdt() {
 	let gdt_register = GdtRegister {
 		size: (core::mem::size_of_val(&*GDT) - 1) as u16,
@@ -52,6 +56,7 @@ unsafe fn load_gdt() {
 	asm!("lgdt [{}]", in(reg) &gdt_register, options(readonly, nostack, preserves_flags));
 }
 
+/// Loads the segment registers.
 unsafe fn load_segment_registers() {
 	asm!(
 		"push 0x08",
@@ -70,6 +75,7 @@ unsafe fn load_segment_registers() {
 	);
 }
 
+/// Initializes the GDT.
 pub fn init() {
 	unsafe {
 		load_gdt();

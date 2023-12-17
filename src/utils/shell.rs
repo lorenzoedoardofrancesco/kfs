@@ -5,7 +5,6 @@ use crate::librs::{self, printraw};
 use crate::vga::{prompt::PROMPT , video_graphics_array::WRITER };
 use crate::utils::io::{ outb, outw, inb };
 
-
 const CMOS_ADDRESS: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
 
