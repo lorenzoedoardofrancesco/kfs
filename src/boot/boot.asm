@@ -1,10 +1,17 @@
 global start
-
 extern _start
 
 section .text
-bits 32
-
 start:
-	call _start
-	hlt
+    push ebx
+    push eax
+    call _start
+    cli
+halt:
+    hlt
+    jmp halt
+
+section .bss
+align 16
+stack_space: resb 4096
+stack_top:

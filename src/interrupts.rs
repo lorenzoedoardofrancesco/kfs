@@ -39,7 +39,7 @@ impl InterruptIndex {
 }
 
 #[derive(Debug)]
-#[repr(C, packed)]
+#[repr(C)]
 pub struct InterruptStackFrame {
 	instruction_pointer: u32,
 	code_segment: u32,
@@ -100,7 +100,8 @@ pub extern "C" fn non_maskable_interrupt(_stack_frame: &mut InterruptStackFrame)
 }
 
 pub extern "C" fn breakpoint(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: BREAKPOINT\n{:#x?}", _stack_frame);
+	let stack_frame = &mut *_stack_frame;
+	println!("EXCEPTION: BREAKPOINT at {:#x}\n{:#x?}", stack_frame.instruction_pointer, stack_frame);
 }
 
 pub fn overflow(_stack_frame: &mut InterruptStackFrame) {

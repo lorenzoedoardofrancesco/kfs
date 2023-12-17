@@ -9,8 +9,7 @@ release:
 	@cargo build --release
 	@mkdir -p build
 	@nasm -f elf32 src/boot/boot.asm -o build/boot.o
-	@nasm -f elf32 src/boot/multiboot_header.asm -o build/multiboot_header.o
-	@ld -m elf_i386 -n -o isofiles/boot/kfs.bin -T linker.ld build/multiboot_header.o build/boot.o $(RELEASE_TARGET)/libkfs_1.a $(NO_OUTPUT)
+	ld -m elf_i386 -n -o isofiles/boot/kfs.bin -T linker.ld build/boot.o $(RELEASE_TARGET)/libkfs_1.a $(NO_OUTPUT)
 	@grub-mkrescue -o kfs.iso isofiles $(NO_OUTPUT)
 
 debug:
