@@ -1,7 +1,6 @@
 Pour Alix:
 
 Trouver comment ne pas mettre des mods et des use en chaque fichier
-faire des defines GDT pour etre clair
 
 
 Pour Lorenzo:
