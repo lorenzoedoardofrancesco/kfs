@@ -13,20 +13,42 @@ const MAX_HISTORY_LINES: usize = 16;
 
 pub struct History {
 	buffer: [[u8; MAX_LINE_LENGTH]; MAX_HISTORY_LINES],
+	last_input: [u8; MAX_LINE_LENGTH],
 	index: usize,
+	add_index: usize,
+}
+
+fn u8_array_cmp(a: &[u8; MAX_LINE_LENGTH], b: &[u8; MAX_LINE_LENGTH]) -> bool {
+	for i in 0..MAX_LINE_LENGTH {
+		if a[i] != b[i] {
+			return false;
+		}
+	}
+	true
 }
 
 impl History {
 	fn new() -> History {
 		History {
 			buffer: [[0; MAX_LINE_LENGTH]; MAX_HISTORY_LINES],
+			last_input: [0; MAX_LINE_LENGTH],
 			index: 0,
+			add_index: 0,
 		}
 	}
 
 	fn add(&mut self, line: &str) {
-		self.buffer[self.index] = str_to_array(line);
-		self.index = (self.index + 1) % MAX_HISTORY_LINES;
+		let line_u8 = str_to_array(line);
+
+		if u8_array_cmp(&line_u8, &self.last_input) {
+			self.index = self.add_index;
+			return;
+		}
+		self.buffer[self.add_index] = line_u8;
+		self.last_input = line_u8;
+		self.add_index = (self.add_index + 1) % MAX_HISTORY_LINES;
+		self.index = self.add_index;
+
 	}
 
 	fn get(&self, index: usize) -> &[u8; MAX_LINE_LENGTH] {
@@ -53,20 +75,29 @@ impl History {
 
 	pub fn scroll_up(&mut self) {
 		if self.index == 0 {
-			return;
+			if self.get(MAX_HISTORY_LINES - 1)[0] == 0 {
+				return;
+			}
+			self.index = MAX_HISTORY_LINES - 1;
+		} else {
+			self.index = (self.index - 1) % MAX_HISTORY_LINES;
 		}
+
 		PROMPT.lock().init();
-		self.index = (self.index - 1) % MAX_HISTORY_LINES;
 		self.print_prompt(self.index);
 	}
 
 	pub fn scroll_down(&mut self) {
 		if self.index == MAX_HISTORY_LINES - 1 {
-			return;
+			self.index = 0;
+		} else {
+			if self.get(self.index + 1)[0] == 0 {
+				return;
+			}
+			self.index = (self.index + 1) % MAX_HISTORY_LINES;
 		}
 
 		PROMPT.lock().init();
-		self.index = (self.index + 1) % MAX_HISTORY_LINES;
 		self.print_prompt(self.index);
 	}
 }
