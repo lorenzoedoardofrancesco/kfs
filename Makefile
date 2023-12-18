@@ -19,7 +19,7 @@ all: docker-build docker-create docker-start check-checksums
 docker-build:
 	@if [ -z "$$(docker images -q $(IMAGE_NAME))" ]; then \
 		echo "Building Docker image $(IMAGE_NAME)..."; \
-		docker build -t $(IMAGE_NAME) .; \ 
+		docker build -t $(IMAGE_NAME) .; \
 	else \
 		echo "$(CHECKMARK) Docker image $(IMAGE_NAME) already exists."; \
 	fi
