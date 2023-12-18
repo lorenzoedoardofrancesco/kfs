@@ -75,4 +75,5 @@ pub fn init() {
 		load_gdt();
 		load_segment_registers();
 	}
+	println_serial!("GDT successfully loaded")
 }

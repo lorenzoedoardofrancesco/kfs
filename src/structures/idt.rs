@@ -1,7 +1,13 @@
+use crate::exceptions::interrupts::InterruptIndex;
+use crate::exceptions::interrupts::{
+	alignment_check, bound_range_exceeded, breakpoint, coprocessor_not_available,
+	coprocessor_segment_overrun, debug, divide_by_zero, double_fault, general_protection_fault,
+	invalid_opcode, invalid_task_state_segment, keyboard_interrupt, machine_check, math_fault,
+	non_maskable_interrupt, overflow, page_fault, reserved, segment_not_present,
+	simd_floating_point_exception, stack_fault, timer_interrupt, virtualization_exception,
+};
 use core::arch::asm;
 use lazy_static::lazy_static;
-use crate::exceptions::interrupts::InterruptIndex;
-use crate::exceptions::interrupts::{ divide_by_zero, debug, non_maskable_interrupt, breakpoint, overflow, bound_range_exceeded, invalid_opcode, coprocessor_not_available, double_fault, coprocessor_segment_overrun, invalid_task_state_segment, segment_not_present, stack_fault, general_protection_fault, page_fault, reserved, math_fault, alignment_check, machine_check, simd_floating_point_exception, virtualization_exception, timer_interrupt, keyboard_interrupt };
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
@@ -102,5 +108,7 @@ pub fn init() {
 		};
 
 		asm!("lidt [{}]", in(reg) &idt_register, options(readonly, nostack, preserves_flags));
+
+		println_serial!("IDT successfully loaded");
 	}
 }

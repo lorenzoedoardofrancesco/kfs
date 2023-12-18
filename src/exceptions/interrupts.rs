@@ -1,8 +1,8 @@
-use spin::Mutex;
-use core::sync::atomic::Ordering;
-use crate::utils::io::inb;
-use crate::exceptions::pic8259::ChainedPics;
 use crate::exceptions::keyboard::{KEYBOARD_INTERRUPT_RECEIVED, LAST_SCANCODE};
+use crate::exceptions::pic8259::ChainedPics;
+use crate::utils::io::inb;
+use core::sync::atomic::Ordering;
+use spin::Mutex;
 
 pub const PIC_1_OFFSET: u8 = 32;
 
@@ -64,7 +64,10 @@ pub extern "C" fn non_maskable_interrupt(_stack_frame: &mut InterruptStackFrame)
 
 pub extern "C" fn breakpoint(_stack_frame: &mut InterruptStackFrame) {
 	let stack_frame = &mut *_stack_frame;
-	println!("EXCEPTION: BREAKPOINT at {:#x}\n{:#x?}", stack_frame.instruction_pointer, stack_frame);
+	println!(
+		"EXCEPTION: BREAKPOINT at {:#x}\n{:#x?}",
+		stack_frame.instruction_pointer, stack_frame
+	);
 }
 
 pub fn overflow(_stack_frame: &mut InterruptStackFrame) {
@@ -88,11 +91,17 @@ pub fn double_fault(_stack_frame: &mut InterruptStackFrame) {
 }
 
 pub fn coprocessor_segment_overrun(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: COPROCESSOR SEGMENT OVERRUN\n{:#x?}", _stack_frame);
+	println!(
+		"EXCEPTION: COPROCESSOR SEGMENT OVERRUN\n{:#x?}",
+		_stack_frame
+	);
 }
 
 pub fn invalid_task_state_segment(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: INVALID TASK STATE SEGMENT\n{:#x?}", _stack_frame);
+	println!(
+		"EXCEPTION: INVALID TASK STATE SEGMENT\n{:#x?}",
+		_stack_frame
+	);
 }
 
 pub fn segment_not_present(_stack_frame: &mut InterruptStackFrame) {
@@ -128,7 +137,10 @@ pub fn machine_check(_stack_frame: &mut InterruptStackFrame) {
 }
 
 pub fn simd_floating_point_exception(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: SIMD FLOATING POINT EXCEPTION\n{:#x?}", _stack_frame);
+	println!(
+		"EXCEPTION: SIMD FLOATING POINT EXCEPTION\n{:#x?}",
+		_stack_frame
+	);
 }
 
 pub fn virtualization_exception(_stack_frame: &mut InterruptStackFrame) {
@@ -137,7 +149,8 @@ pub fn virtualization_exception(_stack_frame: &mut InterruptStackFrame) {
 
 pub fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	unsafe {
-		PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+		PICS.lock()
+			.notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 	}
 }
 
@@ -148,7 +161,8 @@ pub fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	KEYBOARD_INTERRUPT_RECEIVED.store(true, Ordering::SeqCst);
 
 	unsafe {
-		PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+		PICS.lock()
+			.notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
 	}
 }
 
@@ -157,6 +171,7 @@ pub fn init() {
 		PICS.lock().initialize();
 	}
 	enable();
+	println_serial!("Interrupts successfully initialized");
 }
 
 pub fn enable() {

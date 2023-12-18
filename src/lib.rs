@@ -2,18 +2,20 @@
 #![no_main]
 #![feature(naked_functions)]
 
-#[macro_use] mod librs;
-
+#[macro_use]
+mod librs;
+mod boot;
 mod exceptions;
 mod structures;
 mod utils;
 mod vga;
 
+use boot::multiboot;
 use core::arch::asm;
 use core::panic::PanicInfo;
-use structures::{ gdt, idt };
-use utils::{ debug, shell };
-use exceptions::{ keyboard::process_keyboard_input, interrupts };
+use exceptions::{interrupts, keyboard::process_keyboard_input};
+use structures::{gdt, idt};
+use utils::{debug, shell};
 
 fn generate_interrupt(n: u8) {
 	unsafe {
@@ -71,159 +73,9 @@ pub fn trigger_divide_by_zero() {
 	}
 }
 
-
-#[repr(C, align(8))]
-struct MultibootHeader {
-	magic: u32,
-	architecture: u32,
-	header_length: u32,
-	checksum: u32,
-	end_tag_type: u16,
-	end_tag_flags: u16,
-	end_tag_size: u32,
-}
-
-#[used]
-#[link_section = ".multiboot_header"]
-static MULTIBOOT_HEADER: MultibootHeader = MultibootHeader {
-	magic: 0xe85250d6,
-	architecture: 0,
-	header_length: core::mem::size_of::<MultibootHeader>() as u32,
-	checksum: (0_u32).wrapping_sub(0xe85250d6).wrapping_sub(0).wrapping_sub(core::mem::size_of::<MultibootHeader>() as u32),
-	end_tag_type: 0,
-	end_tag_flags: 0,
-	end_tag_size: 8,
-};
-
-#[repr(C, align(8))]
-struct MultibootInfo {
-	total_size: u32,
-	reserved: u32,
-	tags: [MultibootTag; 1],
-}
-
-#[repr(C, align(8))]
-struct MultibootTag {
-	typ: u32,
-	size: u32,
-}
-
-#[repr(C)]
-struct MultibootTagString {
-	typ: u32,
-	size: u32,
-	string: u8,
-}
-
-#[repr(C)]
-struct MultibootTagModule {
-	typ: u32,
-	size: u32,
-	mod_start: u32,
-	mod_end: u32,
-	string: u8,
-}
-
-#[repr(C)]
-struct MultibootTagBasicMemInfo {
-	typ: u32,
-	size: u32,
-	mem_lower: u32,
-	mem_upper: u32,
-}
-
-#[repr(C)]
-struct MultibootTagBootDev {
-	typ: u32,
-	size: u32,
-	biosdev: u32,
-	partition: u32,
-	sub_partition: u32,
-}
-
-#[repr(C)]
-struct MultibootMemoryMap {
-	typ: u32,
-	size: u32,
-	entry_size: u32,
-	entry_version: u32,
-	entries: [MultibootMemoryMapTag; 1],
-}
-
-#[repr(C)]
-struct MultibootMemoryMapTag {
-	size: u32,
-	base_addr: u64,
-	length: u64,
-	typ: u32,
-}
-
-const  MULTIBOOT_MEMORY_AVAILABLE: u8 = 1;
-
 #[no_mangle]
 pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
-	if multiboot_magic != 0x36d76289 {
-		panic!("Invalid multiboot magic number: 0x{:x}", multiboot_magic);
-	}
-	if multiboot_addr & 0x7 != 0 {
-		panic!("Unaligned multiboot address: 0x{:x}", multiboot_addr);
-	}
-	init();
-
-	let mb_info = unsafe { &*(multiboot_addr as *const MultibootInfo) };
-	let mut current_addr = multiboot_addr + 8;
-
-	while current_addr < multiboot_addr + (mb_info.total_size as u32) {
-		let tag = unsafe { &*(current_addr as *const MultibootTag) };
-
-		match tag.typ {
-			0 => break,  // End tag
-			1 => {  // Boot command line
-				let cmdline_tag = unsafe { &*(current_addr as *const MultibootTagString) };
-				let cmdline = unsafe { core::slice::from_raw_parts((&cmdline_tag.string) as *const u8, cmdline_tag.size as usize - 8) };
-				println!("Command line: {}", core::str::from_utf8(cmdline).unwrap());
-			},
-			2 => {  // Boot loader name
-				let loader_tag = unsafe { &*(current_addr as *const MultibootTagString) };
-				let loader = unsafe { core::slice::from_raw_parts((&loader_tag.string) as *const u8, loader_tag.size as usize - 8) };
-				println!("Boot loader: {}", core::str::from_utf8(loader).unwrap());
-			},
-			3 => {  // Module
-				let module_tag = unsafe { &*(current_addr as *const MultibootTagModule) };
-				let module = unsafe { core::slice::from_raw_parts((&module_tag.string) as *const u8, module_tag.size as usize - 8) };
-				println!("Module: {}", core::str::from_utf8(module).unwrap());
-			},
-			4 => {  // Basic memory information
-				let mem_tag = unsafe { &*(current_addr as *const MultibootTagBasicMemInfo) };
-				println!("Memory: {} KB", mem_tag.mem_lower + mem_tag.mem_upper);
-			},
-			5 => {  // BIOS boot device
-				let bootdev_tag = unsafe { &*(current_addr as *const MultibootTagBootDev) };
-				println!("Boot device: 0x{:x}", bootdev_tag.biosdev);
-			},
-			6 => { // Memory map tag type
-				let mmap = unsafe { &*(current_addr as *const MultibootMemoryMap) };
-				let entries = (mmap.size as usize - 16) / mmap.entry_size as usize;
-	
-				let mut entry_addr = current_addr + 16; // Start of the memory map entries
-				for _ in 0..entries {
-					let entry = unsafe { &*(entry_addr as *const MultibootMemoryMapTag) };
-	
-					if entry.typ == 1 {
-						println!("Available memory region: start = {:x}, length = {:x}", entry.base_addr, entry.length);
-					} else {
-						println!("Reserved memory region: start = {:x}, length = {:x}", entry.base_addr, entry.length);
-					}
-	
-					entry_addr += mmap.entry_size as u32;
-				}}
-			// Add other cases for different tag types
-			_ => (),
-		}
-
-		current_addr = ((current_addr + (tag.size as u32) + 7) & !7) as u32;
-	}
-
+	init(multiboot_magic, multiboot_addr);
 	loop {
 		process_keyboard_input();
 		librs::hlt();
@@ -238,10 +90,10 @@ fn panic(info: &PanicInfo) -> ! {
 	}
 }
 
-fn init() {
+fn init(multiboot_magic: u32, multiboot_addr: u32) {
+	multiboot::init(multiboot_magic, multiboot_addr);
 	gdt::init();
 	idt::init();
 	interrupts::init();
-	debug::init_serial_port();
 	shell::print_welcome_message();
 }

@@ -1,12 +1,12 @@
+use crate::utils::io::{inb, outb};
 use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::utils::io::{ inb, outb };
 
 const SERIAL_PORT: u16 = 0x3f8;
 
 lazy_static! {
-	pub static ref DEBUG: Mutex<Debug> = Mutex::new(Debug);
+	pub static ref DEBUG: Mutex<Debug> = Mutex::new(Debug {});
 }
 
 pub struct Debug;
@@ -33,7 +33,6 @@ impl Debug {
 impl fmt::Write for Debug {
 	fn write_str(&mut self, s: &str) -> fmt::Result {
 		self.write_string_serial(s);
-		self.write_byte_serial(b'\r');
 		Ok(())
 	}
 }
@@ -48,4 +47,5 @@ pub fn init_serial_port() {
 		outb(SERIAL_PORT + 2, 0xc7);
 		outb(SERIAL_PORT + 4, 0x0b);
 	}
+	println_serial!("Serial port initialized");
 }

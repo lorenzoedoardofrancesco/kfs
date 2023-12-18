@@ -1,7 +1,7 @@
-use core::fmt;
 use crate::debug::DEBUG;
 use crate::exceptions::interrupts;
 use crate::vga::video_graphics_array::WRITER;
+use core::fmt;
 
 #[macro_export]
 macro_rules! print {
@@ -20,15 +20,22 @@ macro_rules! printk {
 		$crate::librs::printk($level, format_args!($($arg)*))
 	};*/
 
-	($( $arg:tt )*) => {
+	($($arg:tt)*) => {
 		$crate::librs::printk(format_args!($($arg)*))
 	};
 }
 
 #[macro_export]
 macro_rules! print_serial {
-	($($arg:tt)*) => { $crate::librs::print_serial(format_args!($($arg)*));
+	($($arg:tt)*) => {
+		$crate::librs::print_serial(format_args!($($arg)*))
 	};
+
+}
+
+macro_rules! println_serial {
+	() => (print_serial!("\n\r"));
+	($($arg:tt)*) => (print_serial!("{}\n\r", format_args!($($arg)*)));
 }
 
 #[macro_export]
@@ -102,6 +109,7 @@ pub fn hlt() {
 		asm!("hlt", options(nomem, nostack, preserves_flags));
 	}
 }
+
 /*/
 pub const KERN_EMERG: &str = "KERN_EMERG: ";
 pub const KERN_ALERT: &str = "KERN_ALERT: ";
