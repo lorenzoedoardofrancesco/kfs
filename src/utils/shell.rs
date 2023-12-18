@@ -2,6 +2,8 @@ use crate::generate_interrupt;
 use crate::librs::{self, printraw};
 use crate::utils::io::{inb, outb, outw};
 use crate::vga::{prompt::PROMPT, video_graphics_array::WRITER};
+use lazy_static::lazy_static;
+use spin::Mutex;
 
 const CMOS_ADDRESS: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
