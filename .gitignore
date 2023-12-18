@@ -2,3 +2,4 @@ Cargo.lock
 .checksums
 /target
 kfs.iso
+output.log
