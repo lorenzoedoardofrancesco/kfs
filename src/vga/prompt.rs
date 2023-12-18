@@ -1,7 +1,7 @@
+use crate::shell::readline;
+use crate::vga::video_graphics_array::{VGA_COLUMNS, VGA_LAST_LINE, WRITER};
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::vga::video_graphics_array::{ WRITER, VGA_COLUMNS, VGA_LAST_LINE };
-use crate::shell::readline;
 
 pub static PROMPT_STRING: &str = "$> ";
 pub static PROMPT_LENGTH: usize = PROMPT_STRING.len();
@@ -28,6 +28,10 @@ impl Prompt {
 	pub fn insert_char(&mut self, c: u8, insert: bool) {
 		if c == b'\n' {
 			println!();
+			if self.length < PROMPT_LENGTH {
+				self.init();
+				return;
+			}
 			readline(core::str::from_utf8(&self.buffer[PROMPT_LENGTH..self.length]).unwrap());
 			self.init();
 			return;
@@ -108,7 +112,9 @@ pub fn tab() {
 }
 
 pub fn end() {
-	WRITER.lock().update_cursor(VGA_LAST_LINE, PROMPT.lock().length);
+	WRITER
+		.lock()
+		.update_cursor(VGA_LAST_LINE, PROMPT.lock().length);
 }
 
 pub fn home() {

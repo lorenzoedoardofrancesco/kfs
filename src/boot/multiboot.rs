@@ -1,3 +1,5 @@
+use crate::memory::memory_management::{PAGE_TABLE_END, PAGE_TABLE_START};
+
 const MULTIBOOT_HEADER_MAGIC: u32 = 0xe85250d6;
 const MULTIBOOT_HEADER_ARCHITECTURE: u32 = 0;
 const MULTIBOOT_HEADER_CHECKSUM: u32 = (0_u32)
@@ -18,7 +20,7 @@ static MULTIBOOT_HEADER: MultibootHeader = MultibootHeader {
 	end_tag_size: 8,
 };
 
-#[repr(C, align(8))]
+#[repr(C)]
 struct MultibootHeader {
 	magic: u32,
 	architecture: u32,
@@ -29,14 +31,14 @@ struct MultibootHeader {
 	end_tag_size: u32,
 }
 
-#[repr(C, align(8))]
+#[repr(C)]
 struct MultibootInfo {
 	total_size: u32,
 	reserved: u32,
 	tags: [MultibootTag; 1],
 }
 
-#[repr(C, align(8))]
+#[repr(C)]
 struct MultibootTag {
 	tag_type: u32,
 	size: u32,
@@ -167,10 +169,33 @@ pub fn init(magic: u32, addr: u32) {
 						entry.entry_type
 					);
 				}
+
+				let entries_count = (mmap.size - mmap.entry_size) / mmap.entry_size;
+				let memory_map_entries =
+					unsafe { core::slice::from_raw_parts(nmap, entries_count as usize) };
+				process_memory_map(memory_map_entries);
 			}
 			_ => {}
 		}
 		current_tag = (current_tag as usize + (tag.size as usize + 7) & !7) as *const MultibootTag;
 		tag = unsafe { &*current_tag };
 	}
+}
+
+fn process_memory_map(memory_map_entries: &[MultibootMemoryMapEntry]) {
+	let mut largest_region = (0, 0);
+	for entry in memory_map_entries {
+		if entry.entry_type == 1 {
+			if entry.len > largest_region.1 {
+				largest_region = (entry.addr, entry.len);
+			}
+		}
+	}
+
+	unsafe {
+		PAGE_TABLE_START = largest_region.0 as usize;
+		PAGE_TABLE_END = PAGE_TABLE_START + largest_region.1 as usize;
+	}
+
+	println!("Largest region: {:#x}-{:#x}", largest_region.0, largest_region.0 + largest_region.1);
 }

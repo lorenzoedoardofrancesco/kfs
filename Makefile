@@ -71,7 +71,7 @@ check-checksums:
 
 run:
 	@if [ -f kfs.iso ]; then \
-		qemu-system-i386 -boot order=c kfs.iso; \
+		qemu-system-i386 kfs.iso -m 4096 -serial file:output.log; \
 	else \
 		echo "No kfs.iso found, please run 'make' first."; \
 	fi

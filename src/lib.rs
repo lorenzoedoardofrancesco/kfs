@@ -6,6 +6,7 @@
 mod librs;
 mod boot;
 mod exceptions;
+mod memory;
 mod structures;
 mod utils;
 mod vga;
@@ -91,9 +92,9 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 fn init(multiboot_magic: u32, multiboot_addr: u32) {
-	multiboot::init(multiboot_magic, multiboot_addr);
 	gdt::init();
 	idt::init();
 	interrupts::init();
-	shell::print_welcome_message();
+	multiboot::init(multiboot_magic, multiboot_addr);
+	//shell::print_welcome_message();
 }
