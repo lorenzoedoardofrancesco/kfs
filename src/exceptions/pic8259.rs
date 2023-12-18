@@ -35,11 +35,13 @@ impl Pic {
 	}
 }
 
+/// Represents a pair of chained PICs.
 pub struct ChainedPics {
 	pics: [Pic; 2],
 }
 
 impl ChainedPics {
+	/// Creates a new pair of chained PICs.
 	pub const unsafe fn new(offset1: u8, offset2: u8) -> ChainedPics {
 		ChainedPics {
 			pics: [
@@ -61,6 +63,7 @@ impl ChainedPics {
 		Self::new(primary_offset, primary_offset + 8)
 	}
 
+	/// Initializes the PICs. 
 	pub unsafe fn initialize(&mut self) {
 		let wait = || outb(WAIT_PORT as u16, 0);
 

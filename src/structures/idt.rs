@@ -9,6 +9,7 @@ use crate::exceptions::interrupts::{
 use core::arch::asm;
 use lazy_static::lazy_static;
 
+/// Interrupt Descriptor Table descriptor structure.
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
 struct IdtDescriptor {
@@ -20,6 +21,7 @@ struct IdtDescriptor {
 }
 
 impl IdtDescriptor {
+	/// Creates a new IDT entry.
 	fn new(offset: u32, selector: u16, type_attributes: u8) -> IdtDescriptor {
 		IdtDescriptor {
 			offset_low: (offset & 0xffff) as u16,
@@ -94,12 +96,14 @@ lazy_static! {
 	};
 }
 
+/// Interrupt Descriptor Table register structure.
 #[repr(C, packed)]
 struct IdtRegister {
 	size: u16,
 	offset: u32,
 }
 
+/// Loads the IDT.
 pub fn init() {
 	unsafe {
 		let idt_register = IdtRegister {
