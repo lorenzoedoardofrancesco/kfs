@@ -197,5 +197,5 @@ fn process_memory_map(memory_map_entries: &[MultibootMemoryMapEntry]) {
 		PAGE_TABLE_END = PAGE_TABLE_START + largest_region.1 as usize;
 	}
 
-	println!("Largest region: {:#x}-{:#x}", largest_region.0, largest_region.0 + largest_region.1);
+	println_serial!("Largest region: {:#x}-{:#x}", largest_region.0, largest_region.0 + largest_region.1);
 }
