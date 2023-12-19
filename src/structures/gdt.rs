@@ -1,3 +1,7 @@
+use crate::structures::accessflags::{
+	KERNEL_CODE_SEGMENT, KERNEL_DATA_SEGMENT, KERNEL_STACK_SEGMENT, MAX_SEGMENT_SIZE, NO_OFFSET,
+	NULL_SEGMENT, SEGMENT_FLAGS, USER_CODE_SEGMENT, USER_DATA_SEGMENT, USER_STACK_SEGMENT,
+};
 use core::arch::asm;
 use lazy_static::lazy_static;
 
@@ -8,34 +12,34 @@ struct GdtEntry {
 	base_low: u16,
 	base_middle: u8,
 	access: u8,
-	granularity: u8,
+	flags: u8,
 	base_high: u8,
 }
 
 impl GdtEntry {
 	/// Creates a new GDT entry.
-	fn new(limit: u32, base: u32, access: u8, granularity: u8) -> GdtEntry {
+	fn new(limit: u32, base: u32, access: u8, flags: u8, name: &str) -> GdtEntry {
+		println_serial!("{:25}{:<#14x}{:<#10x}{:<#10x}{:<#10x}", name, limit, base, access, flags);
 		GdtEntry {
 			limit_low: (limit & 0xffff) as u16,
 			base_low: (base & 0xffff) as u16,
 			base_middle: ((base >> 16) & 0xff) as u8,
 			access,
-			granularity: (granularity & 0xf0) | (((limit >> 16) & 0x0f) as u8),
+			flags: (flags & 0xf0) | (((limit >> 16) & 0x0f) as u8),
 			base_high: ((base >> 24) & 0xff) as u8,
 		}
 	}
 }
-
 lazy_static! {
 	#[link_section = ".gdt"]
 	static ref GDT: [GdtEntry; 7] = [
-		GdtEntry::new(0, 0, 0, 0),
-		GdtEntry::new(0xfffff, 0, 0x9a, 0xcf),
-		GdtEntry::new(0xfffff, 0, 0x92, 0xcf),
-		GdtEntry::new(0xfffff, 0, 0x96, 0xcf),
-		GdtEntry::new(0xfffff, 0, 0xfa, 0xcf),
-		GdtEntry::new(0xfffff, 0, 0xf2, 0xcf),
-		GdtEntry::new(0xfffff, 0, 0xf6, 0xcf),
+		GdtEntry::new(0, 0, NULL_SEGMENT, 0, "NULL segment"),
+		GdtEntry::new(MAX_SEGMENT_SIZE, NO_OFFSET, KERNEL_CODE_SEGMENT, SEGMENT_FLAGS, "Kernel code segment"),
+		GdtEntry::new(MAX_SEGMENT_SIZE, NO_OFFSET, KERNEL_DATA_SEGMENT, SEGMENT_FLAGS, "Kernel data segment"),
+		GdtEntry::new(MAX_SEGMENT_SIZE, NO_OFFSET, KERNEL_STACK_SEGMENT, SEGMENT_FLAGS, "Kernel stack segment"),
+		GdtEntry::new(MAX_SEGMENT_SIZE, NO_OFFSET, USER_CODE_SEGMENT, SEGMENT_FLAGS, "User code segment"),
+		GdtEntry::new(MAX_SEGMENT_SIZE, NO_OFFSET, USER_DATA_SEGMENT, SEGMENT_FLAGS, "User data segment"),
+		GdtEntry::new(MAX_SEGMENT_SIZE, NO_OFFSET, USER_STACK_SEGMENT, SEGMENT_FLAGS, "User stack segment"),
 	];
 }
 
@@ -77,6 +81,7 @@ unsafe fn load_segment_registers() {
 
 /// Initializes the GDT.
 pub fn init() {
+	println_serial!("{:25}{:14}{:10}{:10}{:10}", "", "limit", "offset", "access", "flags");
 	unsafe {
 		load_gdt();
 		load_segment_registers();
