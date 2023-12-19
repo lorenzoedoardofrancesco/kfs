@@ -1,11 +1,10 @@
-use crate::exceptions::keyboard::{KEYBOARD_INTERRUPT_RECEIVED, LAST_SCANCODE};
+use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
 use crate::exceptions::pic8259::ChainedPics;
 use crate::utils::io::inb;
 use core::sync::atomic::Ordering;
 use spin::Mutex;
 
 pub const PIC_1_OFFSET: u8 = 32;
-
 pub static PICS: Mutex<ChainedPics> =
 	Mutex::new(unsafe { ChainedPics::new_contiguous(PIC_1_OFFSET) });
 
@@ -157,10 +156,10 @@ pub fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
 pub fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	let scancode: u8 = unsafe { inb(0x60) };
 
-	*LAST_SCANCODE.lock() = scancode;
-	KEYBOARD_INTERRUPT_RECEIVED.store(true, Ordering::SeqCst);
-
 	unsafe {
+		SCANCODE_BUFFER[BUFFER_HEAD] = scancode;
+		BUFFER_HEAD = (BUFFER_HEAD + 1) % SCANCODE_BUFFER.len();
+		KEYBOARD_INTERRUPT_RECEIVED.store(true, Ordering::SeqCst);
 		PICS.lock()
 			.notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
 	}

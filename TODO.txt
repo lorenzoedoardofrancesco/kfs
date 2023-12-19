@@ -5,13 +5,9 @@ faire des defines GDT pour etre clair
 
 
 Pour Lorenzo:
-
-//weird numpad input, removes char
+✓ Le clavier maintenant marche super bien. A tester s'il y a des bugs.
 Regler Makefile petit a petit
-Regler les scancodes sur clavier: par example fleche du haute double scancode!!
-mettre infos sur la COM1
 regler printk
-// le cursor est pas au bon endroit parce-que sur vga on le met a la fin de la print_str
 
 
 ✓✓✓✓✓✓✓✓✓✓✓✓✓

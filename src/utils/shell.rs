@@ -1,5 +1,5 @@
 use crate::generate_interrupt;
-use crate::librs::{self, printraw};
+use crate::librs::{self, hexdump, printraw};
 use crate::utils::io::{inb, outb, outw};
 use crate::vga::{prompt::PROMPT, video_graphics_array::WRITER};
 use lazy_static::lazy_static;
@@ -229,6 +229,8 @@ fn except(line: &str) {
 	}
 }
 
+use crate::{ESP, EBP};
+
 pub fn readline(raw_line: &str) {
 	let line = raw_line.trim();
 	if line.is_empty() {
@@ -238,7 +240,7 @@ pub fn readline(raw_line: &str) {
 	match line {
 		"help" | "man" => help(),
 		"clear" => clear(),
-		"printstack" => librs::print_stack(),
+		"stack" => unsafe { hexdump(ESP, (EBP - ESP) as usize) },
 		"time" => time(),
 		"miao" => miao(),
 		"reboot" => reboot(),

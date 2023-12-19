@@ -1,6 +1,7 @@
 use crate::debug::DEBUG;
 use crate::exceptions::interrupts;
 use crate::vga::video_graphics_array::WRITER;
+use core::arch::asm;
 use core::fmt;
 
 #[macro_export]
@@ -121,6 +122,7 @@ pub const KERN_INFO: &str = "KERN_INFO: ";
 pub const KERN_DEBUG: &str = "KERN_DEBUG: ";
 */
 
+/*
 pub fn printk(/*level: &str, */ args: fmt::Arguments) {
 	use core::fmt::Write;
 	/*let mut writer = WRITER.lock();
@@ -131,26 +133,45 @@ pub fn printk(/*level: &str, */ args: fmt::Arguments) {
 	interrupts::enable();
 }
 
-///
-///
-///
-use core::arch::asm;
+*/
 
-pub fn print_stack() {
-	let stack_pointer: usize;
-	unsafe {
-		asm!("mov {}, esp", out(reg) stack_pointer, options(nomem, nostack));
+pub fn hexdump(mut addr: u32, limit: usize) {
+	if limit <= 0 {
+		return;
 	}
-	printk!("Stack Pointer: {:#8x}\n", stack_pointer);
 
-	const STACK_SIZE: usize = 256; // Define how much of the stack you want to read
-	let stack_data =
-		unsafe { core::slice::from_raw_parts(stack_pointer as *const u32, STACK_SIZE / 4) };
+	println!("addr: {:08x}, limit: {}", addr, limit);
 
-	for (offset, &value) in stack_data.iter().enumerate() {
-		printk!("{:#8x}|{:#8x} ", stack_pointer + offset * 4, value);
-		if (offset + 1) % 4 == 0 {
-			printk!("\n");
+	let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, limit) };
+
+	for (i, &byte) in bytes.iter().enumerate() {
+		if i % 16 == 0 {
+			if i != 0 {
+				print_hex_line(addr - 16, 16);
+				println!();
+			}
+			print!("{:08x}: ", addr);
+		}
+		print!("{:02x} ", byte);
+		addr += 1;
+	}
+
+	let remaining = limit % 16;
+	for _ in 0..((16 - remaining) * 3) {
+		print!(" ");
+	}
+	print_hex_line(addr - remaining as u32, remaining);
+	println!();
+}
+
+fn print_hex_line(addr: u32, count: usize) {
+	let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, count) };
+
+	for &byte in bytes {
+		if byte <= 32 && byte >= 127 {
+			print!(".");
+		} else {
+			print!("{}", byte as char);
 		}
 	}
 }

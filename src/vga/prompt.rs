@@ -1,5 +1,5 @@
 use crate::shell::readline;
-use crate::vga::video_graphics_array::{VGA_COLUMNS, VGA_LAST_LINE, WRITER};
+use crate::vga::video_graphics_array::{VGA_COLUMNS, WRITER};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -112,13 +112,18 @@ pub fn tab() {
 }
 
 pub fn end() {
-	WRITER
-		.lock()
-		.update_cursor(VGA_LAST_LINE, PROMPT.lock().length);
+	let diff: i8 = (PROMPT.lock().length - WRITER.lock().column_position) as i8;
+	if diff > 0 {
+		WRITER.lock().move_cursor(diff);
+	}
 }
 
 pub fn home() {
-	WRITER.lock().update_cursor(VGA_LAST_LINE, PROMPT_LENGTH);
+	let diff: i8 = (WRITER.lock().column_position - PROMPT_LENGTH) as i8;
+	if diff > 0 {
+		WRITER.lock().move_cursor(-diff);
+	}
+
 }
 
 pub fn delete() {

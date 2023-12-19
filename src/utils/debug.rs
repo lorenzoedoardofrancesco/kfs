@@ -37,6 +37,7 @@ impl fmt::Write for Debug {
 	}
 }
 
+#[allow(dead_code)]
 pub fn init_serial_port() {
 	unsafe {
 		outb(SERIAL_PORT + 1, 0x00);
