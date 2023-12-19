@@ -39,7 +39,12 @@ pub fn process_keyboard_input() {
 				continue;
 			}
 
-			let c = scancode_to_char(scancode);
+			let escape_prefix = ESCAPE_PREFIX_RECEIVED.load(Ordering::SeqCst);
+			let mut c: u8 = 0;
+
+			if !escape_prefix {
+				c = scancode_to_char(scancode);
+			}
 			if c == b'\0' {
 				update_modifier_state(scancode);
 				continue;
@@ -59,6 +64,7 @@ fn update_modifier_state(scancode: u8) {
 
 	if escape_prefix {
 		match scancode {
+			0x1c => prompt::enter(),
 			0x1d => CTRL_PRESSED.store(true, Ordering::SeqCst),
 			0x9d => CTRL_PRESSED.store(false, Ordering::SeqCst),
 			0x37 => print!("*PRTSC*"),

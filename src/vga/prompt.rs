@@ -87,15 +87,15 @@ impl Prompt {
 	}
 }
 
-pub fn right_arrow() {
-	if WRITER.lock().column_position < PROMPT.lock().length {
-		WRITER.lock().move_cursor(1);
-	}
-}
-
 pub fn left_arrow() {
 	if WRITER.lock().column_position > PROMPT_LENGTH {
 		WRITER.lock().move_cursor(-1);
+	}
+}
+
+pub fn right_arrow() {
+	if WRITER.lock().column_position < PROMPT.lock().length {
+		WRITER.lock().move_cursor(1);
 	}
 }
 
@@ -105,9 +105,17 @@ pub fn backspace() {
 	}
 }
 
-pub fn tab() {
-	if WRITER.lock().column_position < VGA_COLUMNS - 4 {
-		PROMPT.lock().insert_string("    ");
+pub fn delete() {
+	if WRITER.lock().column_position < PROMPT.lock().length {
+		WRITER.lock().move_cursor(1);
+		PROMPT.lock().remove_char();
+	}
+}
+
+pub fn home() {
+	let diff: i8 = (WRITER.lock().column_position - PROMPT_LENGTH) as i8;
+	if diff > 0 {
+		WRITER.lock().move_cursor(-diff);
 	}
 }
 
@@ -118,17 +126,12 @@ pub fn end() {
 	}
 }
 
-pub fn home() {
-	let diff: i8 = (WRITER.lock().column_position - PROMPT_LENGTH) as i8;
-	if diff > 0 {
-		WRITER.lock().move_cursor(-diff);
+pub fn tab() {
+	if WRITER.lock().column_position < VGA_COLUMNS - 4 {
+		PROMPT.lock().insert_string("    ");
 	}
-
 }
 
-pub fn delete() {
-	if WRITER.lock().column_position < PROMPT.lock().length {
-		WRITER.lock().move_cursor(1);
-		PROMPT.lock().remove_char();
-	}
+pub fn enter() {
+	PROMPT.lock().insert_char(b'\n', false);
 }

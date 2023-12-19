@@ -262,18 +262,16 @@ fn except(line: &str) {
 	}
 }
 
-use crate::{EBP, ESP};
-
 pub fn readline(raw_line: &str) {
 	let line = raw_line.trim();
 	if line.is_empty() {
 		return;
 	}
 	HISTORY.lock().add(raw_line);
+
 	match line {
 		"help" | "man" => help(),
 		"clear" => clear(),
-		"stack" => unsafe { hexdump(ESP, (EBP - ESP) as usize) },
 		"time" => time(),
 		"miao" => miao(),
 		"reboot" => reboot(),
@@ -282,20 +280,50 @@ pub fn readline(raw_line: &str) {
 		"history" => HISTORY.lock().print(),
 		"date" => date(),
 		"uname" => uname(),
-		_ => {
-			if line.starts_with("echo") {
-				echo(line);
-			} else if line.starts_with("except") {
-				except(line);
-			} else {
-				let mut len = line.len();
-				if len > 50 {
-					len = 50;
-				}
-				println!("Unknown command: {}", line[0..len].trim());
-			}
-		}
+		_ => handle_special_commands(line),
 	}
+}
+
+fn handle_special_commands(line: &str) {
+	if line.starts_with("echo") {
+		echo(line);
+	} else if line.starts_with("except") {
+		except(line);
+	} else if line.starts_with("stack") {
+		print_stack(line);
+	} else {
+		print_unknown_command(line);
+	}
+}
+
+fn print_stack(line: &str) {
+	let args = &line["stack".len()..].trim();
+	let mut parts = args.split_whitespace();
+
+	// Determine the address to use for the hex dump
+	let address = match parts.next() {
+		Some("esp") => {
+			let esp: u32;
+			unsafe {
+				core::arch::asm!("mov {}, esp", out(reg) esp);
+			}
+			esp
+		}
+		Some(addr_str) => u32::from_str_radix(addr_str, 16).unwrap_or(0),
+		None => 0
+	};
+
+	let num_bytes = parts
+		.next()
+		.and_then(|arg| arg.parse::<usize>().ok())
+		.unwrap_or(256);
+
+	hexdump(address, num_bytes);
+}
+
+fn print_unknown_command(line: &str) {
+	let len = line.len().min(50);
+	println!("Unknown command: {}", line[0..len].trim());
 }
 
 pub fn print_welcome_message() {

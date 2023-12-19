@@ -6,7 +6,6 @@ Trouver comment ne pas mettre des mods et des use en chaque fichier
 Pour Lorenzo:
 ✓ Le clavier maintenant marche super bien. A tester s'il y a des bugs.
 Regler Makefile petit a petit
-regler printk
 
 
 ✓✓✓✓✓✓✓✓✓✓✓✓✓

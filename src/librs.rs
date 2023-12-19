@@ -168,7 +168,7 @@ fn print_hex_line(addr: u32, count: usize) {
 	let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, count) };
 
 	for &byte in bytes {
-		if byte <= 32 && byte >= 127 {
+		if byte <= 32 || byte >= 127 {
 			print!(".");
 		} else {
 			print!("{}", byte as char);

@@ -73,9 +73,6 @@ pub fn trigger_divide_by_zero() {
 	}
 }
 
-pub static mut ESP: u32 = 0;
-pub static mut EBP: u32 = 0;
-
 #[no_mangle]
 pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	init(multiboot_magic, multiboot_addr);
