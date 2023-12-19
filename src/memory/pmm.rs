@@ -114,6 +114,9 @@ impl PhysicalMemoryManager {
 
     }
 
+	fn unset_region() {//TODO
+	}
+
     fn alloc_block(&mut self) -> u32 {
         if self.used_blocks >= self.max_blocks {
             panic!("Out of memory");
@@ -145,15 +148,13 @@ impl PhysicalMemoryManager {
 	fn print_values(&self) {
 		println_serial!("Physical memory manager: {} blocks available", self.max_blocks);
 		println_serial!("Physical memory manager: {} blocks used", self.used_blocks);
-		println_serial!("Physical memory manager: {:#?} memory map address", self.memory_map);
+		println_serial!("Physical memory manager: {:p} memory map address", self.memory_map);
 	}
 }
 
 /// Je veux rajouter le MultibootMemoryMapEntry mais je ne sais pas comment faire encore.
 pub fn physical_memory_init(boot_info: &MultibootTagBasicMemInfo, memory_map_tag: &MultibootMemoryMapTag) {
-	println_serial!("Physical memory manager: Initializing...");
-	println_serial!("{:#?}", boot_info);
-	println_serial!("{:#?}", memory_map_tag);
+
     PMM.lock().init(boot_info, memory_map_tag);
 	PMM.lock().print_values(); 
 }

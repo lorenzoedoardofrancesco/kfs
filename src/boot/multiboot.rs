@@ -129,6 +129,9 @@ pub fn init(magic: u32, addr: u32) {
 	let mut current_tag: *const MultibootTag = multiboot_info.tags.as_ptr();
 	let mut tag: &MultibootTag = unsafe { &*current_tag };
 
+	let mut meminfo: Option<&MultibootTagBasicMemInfo> = None;
+    let mut mmap: Option<&MultibootMemoryMapTag> = None;
+
 	while tag.tag_type != MULTIBOOT_TAG_TYPE_END {
 		//println_serial!("Tag {:#x} size: {:#x}", tag.tag_type, tag.size);
 		match tag.tag_type {
@@ -141,11 +144,11 @@ pub fn init(magic: u32, addr: u32) {
 				println_serial!("Bootloader name: {}", u8_to_str(&bootloader_name.string));
 			}
 			MULTIBOOT_TAG_TYPE_BASIC_MEMINFO => {
-				let meminfo = unsafe { &*(current_tag as *const MultibootTagBasicMemInfo) };
+				meminfo = Some(unsafe { &*(current_tag as *const MultibootTagBasicMemInfo) });
 				println_serial!(
 					"Mem lower: {}KB, Mem upper: {}KB",
-					meminfo.mem_lower,
-					meminfo.mem_upper
+					meminfo.unwrap().mem_lower,
+					meminfo.unwrap().mem_upper
 				);
 			}
 			MULTIBOOT_TAG_TYPE_BOOTDEV => {
@@ -163,9 +166,9 @@ pub fn init(magic: u32, addr: u32) {
 						.entries
 						.as_ptr()
 				};
-				let mmap: &MultibootMemoryMapTag = unsafe { &*(current_tag as *const MultibootMemoryMapTag) };
+				mmap = Some(unsafe { &*(current_tag as *const MultibootMemoryMapTag) });
 				println_serial!("Memory map:");
-				for i in 0..(mmap.size - mmap.entry_size) / mmap.entry_size {
+				for i in 0..(mmap.unwrap().size - mmap.unwrap().entry_size) / mmap.unwrap().entry_size {
 					let entry: &MultibootMemoryMapEntry = unsafe { &*nmap.add(i as usize) };
 					println_serial!(
 						"  {:#x}-{:#x} type: {:#x}  len: {:#x}",
@@ -176,7 +179,7 @@ pub fn init(magic: u32, addr: u32) {
 					);
 				}
 				
-				let entries_count = (mmap.size - mmap.entry_size) / mmap.entry_size;
+				let entries_count = (mmap.unwrap().size - mmap.unwrap().entry_size) / mmap.unwrap().entry_size;
 				let memory_map_entries =
 					unsafe { core::slice::from_raw_parts(nmap, entries_count as usize) };
 				process_memory_map(memory_map_entries);
@@ -188,12 +191,10 @@ pub fn init(magic: u32, addr: u32) {
 	}
 	
 	// A changer
-	// use crate::memory::pmm::physical_memory_init;
-	// let meminfo = unsafe { &*(current_tag as *const MultibootTagBasicMemInfo) };
-	// let mmap: &MultibootMemoryMapTag = unsafe { &*(current_tag as *const MultibootMemoryMapTag) };
-	// print_serial!("{:#?}", meminfo);
-	// print_serial!("{:#?}", mmap);
-	// physical_memory_init(meminfo, mmap);
+	use crate::memory::pmm::physical_memory_init;
+	print_serial!("{:#?}", meminfo);
+	print_serial!("{:#?}", mmap);
+	physical_memory_init(meminfo.unwrap(), mmap.unwrap());
 }
 
 fn process_memory_map(memory_map_entries: &[MultibootMemoryMapEntry]) {
