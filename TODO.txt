@@ -3,6 +3,10 @@ Pour Alix:
 Trouver comment ne pas mettre des mods et des use en chaque fichier
 
 
+En gros, pmm est fini je pense, il faut juste lui passer les deux address des struct dans multiboot.
+Et tester si ca functionne. Il faut les mettre en static je pense, parceque j'ai que des zeros quand je passe
+a l'autre function, je suis con surement mais voila
+
 Pour Lorenzo:
 ✓ Le clavier maintenant marche super bien. A tester s'il y a des bugs.
 Regler Makefile petit a petit
