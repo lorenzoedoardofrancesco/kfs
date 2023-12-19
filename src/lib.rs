@@ -94,6 +94,7 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 fn init(multiboot_magic: u32, multiboot_addr: u32) {
+	debug::init_serial_port();
 	gdt::init();
 	idt::init();
 	interrupts::init();

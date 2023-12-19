@@ -11,20 +11,29 @@ const CMOS_DATA: u16 = 0x71;
 const MAX_LINE_LENGTH: usize = 76;
 const MAX_HISTORY_LINES: usize = 16;
 
+type Line = [u8; MAX_LINE_LENGTH];
 pub struct History {
-	buffer: [[u8; MAX_LINE_LENGTH]; MAX_HISTORY_LINES],
+	buffer: [Line; MAX_HISTORY_LINES],
 	last_input: [u8; MAX_LINE_LENGTH],
 	index: usize,
 	add_index: usize,
 }
 
-fn u8_array_cmp(a: &[u8; MAX_LINE_LENGTH], b: &[u8; MAX_LINE_LENGTH]) -> bool {
-	for i in 0..MAX_LINE_LENGTH {
-		if a[i] != b[i] {
-			return false;
-		}
+fn array_cmp(a: &Line, b: &Line) -> bool {
+	a.iter().zip(b.iter()).all(|(&x, &y)| x == y)
+}
+
+fn array_to_str(arr: &Line) -> &str {
+	let len = arr.iter().position(|&c| c == 0).unwrap_or(arr.len());
+	core::str::from_utf8(&arr[..len]).unwrap_or_default()
+}
+
+fn str_to_array(s: &str) -> Line {
+	let mut line = [0; MAX_LINE_LENGTH];
+	for (i, c) in s.bytes().enumerate() {
+		line[i] = c;
 	}
-	true
+	line
 }
 
 impl History {
@@ -40,78 +49,71 @@ impl History {
 	fn add(&mut self, line: &str) {
 		let line_u8 = str_to_array(line);
 
-		if u8_array_cmp(&line_u8, &self.last_input) {
-			self.index = self.add_index;
+		self.index = self.add_index;
+		if array_cmp(&line_u8, &self.last_input) {
 			return;
 		}
+		self.update_history(line_u8);
+	}
+
+	fn update_history(&mut self, line_u8: Line) {
 		self.buffer[self.add_index] = line_u8;
 		self.last_input = line_u8;
 		self.add_index = (self.add_index + 1) % MAX_HISTORY_LINES;
 		self.index = self.add_index;
-
+		self.buffer[self.index] = [0; MAX_LINE_LENGTH];
 	}
 
-	fn get(&self, index: usize) -> &[u8; MAX_LINE_LENGTH] {
-		&self.buffer[index]
+	fn get(&self, index: usize) -> &Line {
+		&self.buffer[index % MAX_HISTORY_LINES]
 	}
 
 	fn print(&self) {
-		for i in 0..MAX_HISTORY_LINES {
-			let line = self.get(i);
-			if line[0] != 0 {
-				for &c in line.iter().take_while(|&&c| c != 0) {
-					print!("{}", c as char);
-				}
-				println!();
-			}
+		for line in self.buffer.iter().filter(|l| l[0] != 0) {
+			println!("{}", array_to_str(line));
 		}
 	}
 
-	fn print_prompt(&self, index: usize) {
-		for c in self.get(index).iter().take_while(|&&c| c != 0) {
-			PROMPT.lock().insert_char(*c, false);
-		}
+	fn print_prompt(&self) {
+		PROMPT.lock().init();
+		PROMPT
+			.lock()
+			.insert_string(array_to_str(self.get(self.index)));
 	}
 
 	pub fn scroll_up(&mut self) {
+		let original_index = self.index;
+
 		if self.index == 0 {
-			if self.get(MAX_HISTORY_LINES - 1)[0] == 0 {
-				return;
-			}
 			self.index = MAX_HISTORY_LINES - 1;
 		} else {
-			self.index = (self.index - 1) % MAX_HISTORY_LINES;
+			self.index -= 1;
 		}
 
-		PROMPT.lock().init();
-		self.print_prompt(self.index);
+		if self.buffer[self.index][0] == 0 {
+			self.index = original_index;
+			return;
+		}
+
+		self.print_prompt();
 	}
 
 	pub fn scroll_down(&mut self) {
+		if self.buffer[self.index][0] == 0 {
+			return;
+		}
 		if self.index == MAX_HISTORY_LINES - 1 {
 			self.index = 0;
 		} else {
-			if self.get(self.index + 1)[0] == 0 {
-				return;
-			}
-			self.index = (self.index + 1) % MAX_HISTORY_LINES;
+			self.index += 1;
 		}
 
-		PROMPT.lock().init();
-		self.print_prompt(self.index);
+		self.print_prompt();
 	}
 }
 
 lazy_static! {
 	pub static ref HISTORY: Mutex<History> = Mutex::new(History::new());
-}
-
-fn str_to_array(s: &str) -> [u8; MAX_LINE_LENGTH] {
-	let mut array = [0; MAX_LINE_LENGTH];
-	for (i, c) in s.bytes().enumerate() {
-		array[i] = c;
-	}
-	array
 }
 
 fn bcd_to_binary(bcd: u8) -> u8 {
@@ -260,7 +262,7 @@ fn except(line: &str) {
 	}
 }
 
-use crate::{ESP, EBP};
+use crate::{EBP, ESP};
 
 pub fn readline(raw_line: &str) {
 	let line = raw_line.trim();

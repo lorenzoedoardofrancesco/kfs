@@ -7,14 +7,6 @@ pub unsafe fn inb(port: u16) -> u8 {
 	value
 }
 
-/// Read a word from a port.
-#[allow(dead_code)]
-pub unsafe fn inw(port: u16) -> u16 {
-	let value: u16;
-	asm!("in ax, dx", out("ax") value, in("dx") port, options(nomem, nostack));
-	value
-}
-
 /// Write a byte to a port.
 pub unsafe fn outb(port: u16, value: u8) {
 	asm!("out dx, al", in("dx") port, in("al") value, options(nomem, nostack));

@@ -19,7 +19,7 @@ struct GdtEntry {
 impl GdtEntry {
 	/// Creates a new GDT entry.
 	fn new(limit: u32, base: u32, access: u8, flags: u8, name: &str) -> GdtEntry {
-		println_serial!("{:25}{:<#14x}{:<#10x}{:<#10x}{:<#10x}", name, limit, base, access, flags);
+		println_serial!("{:24}{:<#14x}{:<#10x}{:<#11x}{:<#x}", name, limit, base, access, flags);
 		GdtEntry {
 			limit_low: (limit & 0xffff) as u16,
 			base_low: (base & 0xffff) as u16,
@@ -81,10 +81,11 @@ unsafe fn load_segment_registers() {
 
 /// Initializes the GDT.
 pub fn init() {
-	println_serial!("{:25}{:14}{:10}{:10}{:10}", "", "limit", "offset", "access", "flags");
+	println_serial!("Initializing GDT");
+	println_serial!("{:24}{:<14}{:<10}{:<11}{:<}", "", "limit", "offset", "access", "flags");
 	unsafe {
 		load_gdt();
 		load_segment_registers();
 	}
-	println_serial!("GDT successfully loaded")
+	println_serial!("\n\rGDT successfully loaded")
 }
