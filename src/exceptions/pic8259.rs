@@ -63,7 +63,7 @@ impl ChainedPics {
 		Self::new(primary_offset, primary_offset + 8)
 	}
 
-	/// Initializes the PICs. 
+	/// Initializes the PICs.
 	pub unsafe fn initialize(&mut self) {
 		let wait = || outb(WAIT_PORT as u16, 0);
 
@@ -100,10 +100,6 @@ impl ChainedPics {
 		self.pics[0].write_mask(mask1);
 		self.pics[1].write_mask(mask2);
 	}
-
-	//pub unsafe fn disable(&mut self) {
-	//	self.write_masks(u8::MAX, u8::MAX)
-	//}
 
 	pub fn handles_interrupt(&self, interrupt_id: u8) -> bool {
 		self.pics.iter().any(|p| p.handles_interrupt(interrupt_id))

@@ -1,23 +1,16 @@
 Pour Alix:
-
-Trouver comment ne pas mettre des mods et des use en chaque fichier
-
-
-En gros, pmm est fini je pense, il faut juste lui passer les deux address des struct dans multiboot.
-Et tester si ca functionne. Il faut les mettre en static je pense, parceque j'ai que des zeros quand je passe
-a l'autre function, je suis con surement mais voila
-
-BOOOOOOM j'ai trouve!!!!
-Bon pour l'instant ca pue un peu la merde mais ca a l'air de marcher
-faut juste upgrade
-
-J'espere que tu comprend mon code, c'est pas complique. maintenant il faut
-dire a PMM de unset region en function des type de memory, 1 == available
+Faire 4 beau preset pour les vga
+Debug mode
+Shell module a faire voila
+Trouver pourquoi l'ecran change couleur comme la merde
 
 Pour Lorenzo:
-✓ Le clavier maintenant marche super bien. A tester s'il y a des bugs.
-Regler Makefile petit a petit
+Makefile a regler: rm .iso avant make
+COMPILER A L'ECOLE
 
+Clavier a nettoyer: faire gros tableu QWERTY et AZERTY
+Linker a bien bien bien bien bien verifier
+RTC
 
 ✓✓✓✓✓✓✓✓✓✓✓✓✓
 ✓✓✓ KFS-1 ✓✓✓

@@ -10,8 +10,3 @@ start:
 halt:
     hlt
     jmp halt
-
-section .bss
-align 16
-stack_space: resb 4096
-stack_top:

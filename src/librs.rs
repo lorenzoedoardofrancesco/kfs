@@ -111,30 +111,6 @@ pub fn hlt() {
 	}
 }
 
-/*/
-pub const KERN_EMERG: &str = "KERN_EMERG: ";
-pub const KERN_ALERT: &str = "KERN_ALERT: ";
-pub const KERN_CRIT: &str = "KERN_CRIT: ";
-pub const KERN_ERR: &str = "KERN_ERR: ";
-pub const KERN_WARNING: &str = "KERN_WARNING: ";
-pub const KERN_NOTICE: &str = "KERN_NOTICE: ";
-pub const KERN_INFO: &str = "KERN_INFO: ";
-pub const KERN_DEBUG: &str = "KERN_DEBUG: ";
-*/
-
-/*
-pub fn printk(/*level: &str, */ args: fmt::Arguments) {
-	use core::fmt::Write;
-	/*let mut writer = WRITER.lock();
-	writer.write_str(level).unwrap();
-	writer.write_fmt(args).unwrap();*/
-	interrupts::disable();
-	WRITER.lock().write_fmt(args).unwrap();
-	interrupts::enable();
-}
-
-*/
-
 pub fn hexdump(mut address: u32, limit: usize) {
 	if limit <= 0 {
 		return;

@@ -19,7 +19,14 @@ struct GdtEntry {
 impl GdtEntry {
 	/// Creates a new GDT entry.
 	fn new(limit: u32, base: u32, access: u8, flags: u8, name: &str) -> GdtEntry {
-		println_serial!("{:24}{:<#14x}{:<#10x}{:<#11x}{:<#x}", name, limit, base, access, flags);
+		println_serial!(
+			"{:24}{:<#14x}{:<#10x}{:<#11x}{:<#x}",
+			name,
+			limit,
+			base,
+			access,
+			flags
+		);
 		GdtEntry {
 			limit_low: (limit & 0xffff) as u16,
 			base_low: (base & 0xffff) as u16,
@@ -30,6 +37,7 @@ impl GdtEntry {
 		}
 	}
 }
+
 lazy_static! {
 	#[link_section = ".gdt"]
 	static ref GDT: [GdtEntry; 7] = [
@@ -63,17 +71,17 @@ unsafe fn load_gdt() {
 /// Loads the segment registers.
 unsafe fn load_segment_registers() {
 	asm!(
-		"push 0x08",
+		"push 0x08", // Kernel code segment
 		"lea eax, [1f]",
 		"push eax",
 		"retf",
 		"1:",
-		"mov ax, 0x10",
+		"mov ax, 0x10", // Kernel data segment
 		"mov ds, ax",
 		"mov es, ax",
 		"mov fs, ax",
 		"mov gs, ax",
-		"mov ax, 0x18",
+		"mov ax, 0x18", // Kernel stack segment
 		"mov ss, ax",
 		options(preserves_flags)
 	);
@@ -82,7 +90,14 @@ unsafe fn load_segment_registers() {
 /// Initializes the GDT.
 pub fn init() {
 	println_serial!("Initializing GDT");
-	println_serial!("{:24}{:<14}{:<10}{:<11}{:<}", "", "limit", "offset", "access", "flags");
+	println_serial!(
+		"{:24}{:<14}{:<10}{:<11}{:<}",
+		"",
+		"limit",
+		"offset",
+		"access",
+		"flags"
+	);
 	unsafe {
 		load_gdt();
 		load_segment_registers();
