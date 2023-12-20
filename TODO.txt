@@ -8,7 +8,7 @@ FAIRE OBJDUMP -> PRINT STACK DANS .OBJ
 
 Clavier a nettoyer: faire gros tableu QWERTY et AZERTY
 Linker a bien bien bien bien bien verifier
-RTC
+RTC pour le parrot
 
 ✓✓✓✓✓✓✓✓✓✓✓✓✓
 ✓✓✓ KFS-1 ✓✓✓
