@@ -7,6 +7,7 @@ Trouver pourquoi l'ecran change couleur comme la merde
 Pour Lorenzo:
 Makefile a regler: rm .iso avant make
 COMPILER A L'ECOLE
+FAIRE OBJDUMP -> PRINT STACK DANS .OBJ
 
 Clavier a nettoyer: faire gros tableu QWERTY et AZERTY
 Linker a bien bien bien bien bien verifier

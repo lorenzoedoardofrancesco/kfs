@@ -1,4 +1,3 @@
-use crate::generate_interrupt;
 use crate::librs::{self, hexdump, printraw};
 use crate::utils::io::{inb, outb, outw};
 use crate::vga::{prompt::PROMPT, video_graphics_array::WRITER};
@@ -247,21 +246,6 @@ fn uname() {
 	);
 }
 
-fn except(line: &str) {
-	let message: &str = &line["except".len()..];
-	if message.starts_with(" ") && message.len() > 1 {
-		let num: usize = message[1..].trim().parse::<usize>().unwrap_or(usize::MAX);
-		if num > 255 {
-			println!("except: argument must be between 0 and 255");
-			return;
-		}
-		println!("except: throwing exception {}", num);
-		generate_interrupt(num as u8);
-	} else {
-		println!("except: missing argument");
-	}
-}
-
 pub fn readline(raw_line: &str) {
 	let line = raw_line.trim();
 	if line.is_empty() {
@@ -287,8 +271,6 @@ pub fn readline(raw_line: &str) {
 fn handle_special_commands(line: &str) {
 	if line.starts_with("echo") {
 		echo(line);
-	} else if line.starts_with("except") {
-		except(line);
 	} else if line.starts_with("stack") {
 		print_stack(line);
 	} else {
