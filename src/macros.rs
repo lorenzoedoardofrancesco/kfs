@@ -89,4 +89,3 @@ pub fn print_serial(args: fmt::Arguments) {
 	DEBUG.lock().write_fmt(args).unwrap();
 	interrupts::enable();
 }
-
