@@ -1,6 +1,7 @@
-use crate::utils::shell::{print_welcome_message, HISTORY};
 use crate::vga::{prompt, video_graphics_array};
 use core::sync::atomic::{AtomicBool, Ordering};
+use crate::shell::history::HISTORY;
+use crate::shell::prints::print_welcome_message;
 
 pub static KEYBOARD_INTERRUPT_RECEIVED: AtomicBool = AtomicBool::new(false);
 

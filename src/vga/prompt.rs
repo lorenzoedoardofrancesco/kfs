@@ -1,4 +1,4 @@
-use crate::shell::readline;
+use crate::shell::builtins::readline;
 use crate::vga::video_graphics_array::{VGA_COLUMNS, WRITER};
 use lazy_static::lazy_static;
 use spin::Mutex;

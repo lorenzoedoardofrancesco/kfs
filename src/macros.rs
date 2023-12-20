@@ -1,12 +1,11 @@
 use crate::debug::DEBUG;
 use crate::exceptions::interrupts;
 use crate::vga::video_graphics_array::WRITER;
-use core::arch::asm;
 use core::fmt;
 
 #[macro_export]
 macro_rules! print {
-	($($arg:tt)*) => ($crate::librs::print(format_args!($($arg)*)));
+	($($arg:tt)*) => ($crate::macros::print(format_args!($($arg)*)));
 }
 
 #[macro_export]
@@ -29,7 +28,7 @@ macro_rules! printk {
 #[macro_export]
 macro_rules! print_serial {
 	($($arg:tt)*) => {
-		$crate::librs::print_serial(format_args!($($arg)*))
+		$crate::macros::print_serial(format_args!($($arg)*))
 	};
 
 }
@@ -91,63 +90,3 @@ pub fn print_serial(args: fmt::Arguments) {
 	interrupts::enable();
 }
 
-//je vais l'ecraser
-pub fn printraw(string: &str) {
-	interrupts::disable();
-	WRITER.lock().write_string_raw(string);
-	interrupts::enable();
-}
-
-pub fn clear() {
-	interrupts::disable();
-	WRITER.lock().clear_screen();
-	interrupts::enable();
-}
-
-#[inline]
-pub fn hlt() {
-	unsafe {
-		asm!("hlt", options(nomem, nostack, preserves_flags));
-	}
-}
-
-pub fn hexdump(mut address: u32, limit: usize) {
-	if limit <= 0 {
-		return;
-	}
-
-	println!("address: {:08x}, limit: {}", address, limit);
-
-	let bytes = unsafe { core::slice::from_raw_parts(address as *const u8, limit) };
-
-	for (i, &byte) in bytes.iter().enumerate() {
-		if i % 16 == 0 {
-			if i != 0 {
-				print_hex_line(address - 16, 16);
-				println!();
-			}
-			print!("{:08x}: ", address);
-		}
-		print!("{:02x} ", byte);
-		address += 1;
-	}
-
-	let remaining = limit % 16;
-	for _ in 0..((16 - remaining) * 3) {
-		print!(" ");
-	}
-	print_hex_line(address - remaining as u32, remaining);
-	println!();
-}
-
-fn print_hex_line(address: u32, count: usize) {
-	let bytes = unsafe { core::slice::from_raw_parts(address as *const u8, count) };
-
-	for &byte in bytes {
-		if byte <= 32 || byte >= 127 {
-			print!(".");
-		} else {
-			print!("{}", byte as char);
-		}
-	}
-}

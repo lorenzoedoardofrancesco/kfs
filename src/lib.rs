@@ -2,25 +2,28 @@
 #![no_main]
 #![feature(naked_functions)]
 #[macro_use]
-mod librs;
+mod macros;
 mod boot;
 mod exceptions;
 mod structures;
 mod utils;
 mod vga;
+mod shell;
 
 use boot::multiboot;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input};
 use structures::{gdt, idt};
-use utils::{debug, shell};
+use utils::{ debug, librs::hlt };
+use shell::prints;
+
 
 #[no_mangle]
 pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	init(multiboot_magic, multiboot_addr);
 	loop {
 		process_keyboard_input();
-		librs::hlt();
+		hlt();
 	}
 }
 
@@ -28,7 +31,7 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 fn panic(info: &PanicInfo) -> ! {
 	println!("{}", info);
 	loop {
-		librs::hlt();
+		hlt();
 	}
 }
 
@@ -38,5 +41,5 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	gdt::init();
 	idt::init();
 	interrupts::init();
-	shell::print_welcome_message();
+	prints::print_welcome_message();
 }
