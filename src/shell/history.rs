@@ -1,11 +1,11 @@
+use crate::shell::builtins::{MAX_HISTORY_LINES, MAX_LINE_LENGTH};
+use crate::utils::librs::{array_cmp, array_to_str, str_to_array};
+use crate::vga::prompt::PROMPT;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::shell::builtins::{ MAX_LINE_LENGTH, MAX_HISTORY_LINES };
-use crate::utils::librs::{ array_cmp, array_to_str, str_to_array };
-use crate::vga::prompt::PROMPT;
 
 lazy_static! {
-    pub static ref HISTORY: Mutex<History> = Mutex::new(History::new());
+	pub static ref HISTORY: Mutex<History> = Mutex::new(History::new());
 }
 
 pub type Line = [u8; MAX_LINE_LENGTH];

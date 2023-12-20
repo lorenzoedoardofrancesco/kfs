@@ -1,7 +1,7 @@
-use crate::shell::builtins::clear;
-use crate::vga::prompt::PROMPT;
-use crate::utils::librs::hexdump;
 use crate::exceptions::interrupts;
+use crate::shell::builtins::clear;
+use crate::utils::librs::hexdump;
+use crate::vga::prompt::PROMPT;
 use crate::vga::video_graphics_array::WRITER;
 
 pub fn print_unknown_command(line: &str) {
@@ -103,7 +103,6 @@ pub fn help() {
 	printraw("Zhmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm\\");
 	println!("");
 }
-
 
 //je vais l'ecraser
 pub fn printraw(string: &str) {
