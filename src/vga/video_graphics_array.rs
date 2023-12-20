@@ -28,17 +28,17 @@ lazy_static! {
             },
             ScreenState {
                 column_position: 0,
-                color: Color::new(ColorCode::Blue, ColorCode::Black),
+                color: Color::new(ColorCode::DarkGray, ColorCode::Pink),
                 buffer: [0; VGA_BUFFER_SIZE],
             },
             ScreenState {
                 column_position: 0,
-                color: Color::new(ColorCode::Red, ColorCode::Black),
+                color: Color::new(ColorCode::Black, ColorCode::LightCyan),
                 buffer: [0; VGA_BUFFER_SIZE],
             },
             ScreenState {
                 column_position: 0,
-                color: Color::new(ColorCode::Yellow, ColorCode::Black),
+                color: Color::new(ColorCode::Yellow, ColorCode::Red),
                 buffer: [0; VGA_BUFFER_SIZE],
             },
         ],

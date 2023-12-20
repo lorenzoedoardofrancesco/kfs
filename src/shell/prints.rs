@@ -80,7 +80,7 @@ pub fn help() {
 	printraw("ZlmmmmmmmmmmmmmmmkmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
 	print_help_line("echo", "display a line of text");
 	print_help_line("clear", "clear the screen");
-	print_help_line("printstack", "print the stack");
+	print_help_line("stack", "print the stack");
 	print_help_line("time", "print the time");
 	print_help_line("date", "display the current date and time");
 	print_help_line("miao", "print a cat");
