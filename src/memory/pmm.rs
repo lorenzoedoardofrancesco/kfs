@@ -1,65 +1,78 @@
+use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag};
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag, MultibootTagBasicMemInfo};
 
-const PMMNGR_BLOCK_SIZE: u32 = 4096; // 4KB
+const MAX_REGIONS: usize = 10;
+const PMMNGR_BLOCK_SIZE: u32 = 4096; // 4KiB
 const PMMNGR_BLOCKS_PER_BYTE: u32 = 8;
+const USED_BLOCK: u32 = 0xffffffff;
 
-
-lazy_static! {
-    pub static ref PMM: Mutex<PhysicalMemoryManager> = Mutex::new(PhysicalMemoryManager::new());
+#[derive(Clone, Copy)]
+pub struct MemoryRegion {
+	pub start_address: usize,
+	pub size: usize,
 }
 
 /// Prevent the compiler from implementing Send and Sync on the PhysicalMemoryManager. For thread safety.
 unsafe impl Send for PhysicalMemoryManager {}
 unsafe impl Sync for PhysicalMemoryManager {}
-
-// Location of the end of the kernel, we will put the memory map here.  See linker.ld
-extern "C" {
-    static _kernel_end: u8;
-}
-
-
 /// Physical Memory Manager
 pub struct PhysicalMemoryManager {
 	memory_map: &'static mut [u32],
 	used_blocks: u32,
 	max_blocks: u32,
-	size: u32,
+	memory_map_size: u32,
+	pub usable_regions: [MemoryRegion; MAX_REGIONS],
+	pub memory_size: u32,
+	pub memory_map_tag: Option<&'static MultibootMemoryMapTag>,
+	pub memory_map_entries: Option<&'static [MultibootMemoryMapEntry]>,
+}
+
+lazy_static! {
+	pub static ref PMM: Mutex<PhysicalMemoryManager> = Mutex::new(PhysicalMemoryManager {
+		memory_map: unsafe { core::slice::from_raw_parts_mut(0 as *mut u32, 0) },
+		used_blocks: 0,
+		max_blocks: 0,
+		memory_map_size: 0,
+		usable_regions: [MemoryRegion {
+			start_address: 0,
+			size: 0,
+		}; 10],
+		memory_size: 0,
+		memory_map_tag: None,
+		memory_map_entries: None,
+	});
+}
+
+extern "C" {
+	static mut _kernel_end: u8;
 }
 
 impl PhysicalMemoryManager {
-	fn new() -> Self {
-		PhysicalMemoryManager {
-			memory_map: &mut [],
-			used_blocks: 0,
-			max_blocks: 0,
-			size: 0,
-		}
-	}
+	pub fn init(&mut self) {
+		self.max_blocks = self.memory_size / PMMNGR_BLOCK_SIZE;
+		self.memory_map_size = self.max_blocks / PMMNGR_BLOCKS_PER_BYTE;
 
-	fn init(
-		&mut self,
-		boot_info: &MultibootTagBasicMemInfo,
-		memory_map_tag: &MultibootMemoryMapTag,
-	) {
-		let actual_memory = (boot_info.mem_upper - boot_info.mem_lower) * 1024;
-		self.max_blocks = actual_memory / PMMNGR_BLOCK_SIZE;
+		self.memory_map = unsafe {
+			core::slice::from_raw_parts_mut(
+				&_kernel_end as *const u8 as *mut u32,
+				self.memory_map_size as usize,
+			)
+		};
+
+		for i in 0..self.memory_map_size as usize {
+			self.memory_map[i] = USED_BLOCK;
+		}
 		self.used_blocks = self.max_blocks;
-		// We get the address of the end of the kernel.
-		self.memory_map =
-			unsafe { core::slice::from_raw_parts_mut(&_kernel_end as *const u8 as *mut u32, (self.max_blocks / PMMNGR_BLOCKS_PER_BYTE) as usize) };
-		self.size = self.max_blocks / PMMNGR_BLOCKS_PER_BYTE;
-		// Mark all blocks as used. Kernel will mark the ones that are free later on to prevent memory corruption.
-		for i in 0..self.size {
-			self.memory_map[i as usize] = 0xffffffff;
+
+		for i in 1..self.usable_regions.len() {
+			// verifier si la premiere region est bien utilisable miao
+			let region = self.usable_regions[i];
+			if region.size == 0 {
+				break;
+			}
+			self.init_region(region.start_address as u32, region.size as u32);
 		}
-
-		// println_serial!("Physical memory manager: {} blocks available", self.max_blocks);
-		// println_serial!("Physical memory manager: {} blocks used", self.used_blocks);
-		// println_serial!("Physical memory manager: {:#?} memory map address", self.memory_map);
-
-		self.init_available_memory(memory_map_tag);
 	}
 
 	/// Sets a bit in the memory map.
@@ -67,7 +80,7 @@ impl PhysicalMemoryManager {
 		let index = bit / 32;
 		let offset = bit % 32;
 		self.memory_map[index as usize] |= 1 << offset;
-        self.used_blocks += 1;
+		self.used_blocks += 1;
 	}
 
 	/// Unsets a bit in the memory map.
@@ -75,7 +88,7 @@ impl PhysicalMemoryManager {
 		let index = bit / 32;
 		let offset = bit % 32;
 		self.memory_map[index as usize] &= !(1 << offset);
-        self.used_blocks -= 1;
+		self.used_blocks -= 1;
 	}
 
 	/// Tests if a bit is set.
@@ -85,76 +98,133 @@ impl PhysicalMemoryManager {
 		(self.memory_map[index as usize] & (1 << offset)) != 0
 	}
 
-    fn mmap_first_free(&mut self) -> u32 {
-        for i in 0..self.max_blocks / 32 {
-            if self.memory_map[i as usize] != 0xffffffff {
-                for j in 0..32 {
-                    let bit: u32 = 1 << j;
-                    if (self.memory_map[i as usize] & bit) == 0 {
-                        return i * 32 + j;
-                    }
-                }
-            }
-        }
+	fn mmap_first_free(&mut self) -> u32 {
+		for i in 0..self.max_blocks / 32 {
+			if self.memory_map[i as usize] != 0xffffffff {
+				for j in 0..32 {
+					let bit: u32 = 1 << j;
+					if (self.memory_map[i as usize] & bit) == 0 {
+						return i * 32 + j;
+					}
+				}
+			}
+		}
 		0
-    }
-
-    /// Initializes a region of memory for use. Needs address u32 and size in bytes.
-    fn init_region(&mut self, region_address: u32, region_size: u32) {
-        let mut align = region_address / PMMNGR_BLOCK_SIZE;
-        let blocks = region_size / PMMNGR_BLOCK_SIZE;
-        // if region_size % PMMNGR_BLOCK_SIZE != 0 {
-        //     blocks += 1;
-        // }
-        for _ in 0..blocks {
-            self.mmap_unset(align);
-            align += 1;
-        }
-        self.used_blocks -= blocks as u32;
-
-    }
-
-	fn unset_region() {//TODO
 	}
 
-    fn alloc_block(&mut self) -> u32 {
-        if self.used_blocks >= self.max_blocks {
-            panic!("Out of memory");
-        }
+	/// Initializes a region of memory for use. Needs address u32 and size in bytes.
+	fn init_region(&mut self, region_address: u32, region_size: u32) {
+		let start_block = region_address / PMMNGR_BLOCK_SIZE;
+		let mut blocks = region_size / PMMNGR_BLOCK_SIZE;
 
-        let frame = self.mmap_first_free();
-        if frame != 0 {
-            self.mmap_set(frame);
-        } else {
-            panic!("Out of memory");
-        }
+		if region_size % PMMNGR_BLOCK_SIZE != 0 {
+			blocks += 1;
+		}
 
-        frame * PMMNGR_BLOCK_SIZE
-    }
+		for block in start_block..start_block + blocks {
+			self.mmap_unset(block);
+		}
+	}
 
-    fn free_block(&mut self, block: u32) {
-        self.mmap_unset(block / PMMNGR_BLOCK_SIZE);
-    }
+	fn unset_region(&mut self, region_address: u32, region_size: u32) {
+		let start_block = region_address / PMMNGR_BLOCK_SIZE;
+		let mut blocks = region_size / PMMNGR_BLOCK_SIZE;
+
+		if region_size % PMMNGR_BLOCK_SIZE != 0 {
+			blocks += 1;
+		}
+
+		for block in start_block..start_block + blocks {
+			self.mmap_set(block);
+			self.used_blocks += 1;
+		}
+	}
+
+	fn alloc_block(&mut self) -> Result<u32, &'static str> {
+		if self.used_blocks >= self.max_blocks {
+			return Err("Out of memory");
+		}
+
+		let frame = self.mmap_first_free();
+		println!("Frame: {:#x}", frame);
+		if frame != 0 {
+			self.mmap_set(frame);
+			Ok(frame * PMMNGR_BLOCK_SIZE)
+		} else {
+			Err("Out of memory")
+		}
+	}
+
+	fn free_block(&mut self, address: u32) {
+		// mettre un Result parce que si l'adresse est pas utilisable on fait quoi ?
+		if self.is_address_usable(address) {
+			self.mmap_unset(address / PMMNGR_BLOCK_SIZE);
+		}
+	}
 
 	fn init_available_memory(&mut self, mmap: &MultibootMemoryMapTag) {
 		for i in 0..(mmap.size - mmap.entry_size) / mmap.entry_size {
-			let entry: &MultibootMemoryMapEntry = unsafe { &*mmap.entries.as_ptr().add(i as usize) };
+			let entry: &MultibootMemoryMapEntry =
+				unsafe { &*mmap.entries.as_ptr().add(i as usize) };
 			if entry.entry_type == 1 {
-				self.init_region(entry.addr as u32, entry.len as u32);
+				self.init_region(entry.address as u32, entry.len as u32);
 			}
 		}
 	}
 
 	fn print_values(&self) {
-		println_serial!("Physical memory manager: {} blocks available", self.max_blocks);
+		println_serial!(
+			"Physical memory manager: {} blocks available",
+			self.max_blocks
+		);
 		println_serial!("Physical memory manager: {} blocks used", self.used_blocks);
-		println_serial!("Physical memory manager: {:p} memory map address", self.memory_map);
+		println_serial!(
+			"Physical memory manager: {:p} memory map address",
+			self.memory_map
+		);
+	}
+
+	fn process_memory_map(&mut self) {
+		let memory_map_entries = self.memory_map_entries.unwrap();
+		let mut largest_region = (0, 0);
+
+		let mut i = 0;
+		println_serial!("Memory map entry: ");
+		for entry in memory_map_entries {
+			println_serial!(
+				"Address: {:#x} | Length: {:#x} | Type: {:#x} | ",
+				entry.address,
+				entry.len,
+				entry.entry_type
+			);
+			if entry.entry_type == 1 {
+				self.usable_regions[i] = MemoryRegion {
+					start_address: entry.address as usize,
+					size: entry.len as usize,
+				};
+				i += 1;
+			}
+		}
+
+		self.memory_size = memory_map_entries.last().unwrap().address as u32
+			+ memory_map_entries.last().unwrap().len as u32;
+	}
+
+	fn is_address_usable(&self, address: u32) -> bool {
+		for region in self.usable_regions.iter() {
+			if address >= region.start_address as u32
+				&& address <= region.start_address as u32 + region.size as u32
+			{
+				return true;
+			}
+		}
+		false
 	}
 }
 
-/// Je veux rajouter le MultibootMemoryMapEntry mais je ne sais pas comment faire encore.
-pub fn physical_memory_init(boot_info: &MultibootTagBasicMemInfo, memory_map_tag: &MultibootMemoryMapTag) {
+pub fn physical_memory_manager_init() {
+	let mut pmm = PMM.lock();
 
-    PMM.lock().init(boot_info, memory_map_tag);
-	PMM.lock().print_values(); 
+	pmm.process_memory_map();
+	pmm.init()
 }

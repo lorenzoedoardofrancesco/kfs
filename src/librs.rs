@@ -135,37 +135,37 @@ pub fn printk(/*level: &str, */ args: fmt::Arguments) {
 
 */
 
-pub fn hexdump(mut addr: u32, limit: usize) {
+pub fn hexdump(mut address: u32, limit: usize) {
 	if limit <= 0 {
 		return;
 	}
 
-	println!("addr: {:08x}, limit: {}", addr, limit);
+	println!("address: {:08x}, limit: {}", address, limit);
 
-	let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, limit) };
+	let bytes = unsafe { core::slice::from_raw_parts(address as *const u8, limit) };
 
 	for (i, &byte) in bytes.iter().enumerate() {
 		if i % 16 == 0 {
 			if i != 0 {
-				print_hex_line(addr - 16, 16);
+				print_hex_line(address - 16, 16);
 				println!();
 			}
-			print!("{:08x}: ", addr);
+			print!("{:08x}: ", address);
 		}
 		print!("{:02x} ", byte);
-		addr += 1;
+		address += 1;
 	}
 
 	let remaining = limit % 16;
 	for _ in 0..((16 - remaining) * 3) {
 		print!(" ");
 	}
-	print_hex_line(addr - remaining as u32, remaining);
+	print_hex_line(address - remaining as u32, remaining);
 	println!();
 }
 
-fn print_hex_line(addr: u32, count: usize) {
-	let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, count) };
+fn print_hex_line(address: u32, count: usize) {
+	let bytes = unsafe { core::slice::from_raw_parts(address as *const u8, count) };
 
 	for &byte in bytes {
 		if byte <= 32 || byte >= 127 {

@@ -92,9 +92,11 @@ fn panic(info: &PanicInfo) -> ! {
 
 fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	debug::init_serial_port();
+	multiboot::validate_multiboot(multiboot_magic, multiboot_addr);
 	gdt::init();
 	idt::init();
 	interrupts::init();
-	multiboot::init(multiboot_magic, multiboot_addr);
-	//shell::print_welcome_message();
+	multiboot::read_multiboot_info(multiboot_addr);
+	memory::pmm::physical_memory_manager_init();
+//	shell::print_welcome_message();
 }

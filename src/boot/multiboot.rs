@@ -1,4 +1,4 @@
-use crate::memory::memory_management::{PAGE_TABLE_END, PAGE_TABLE_START};
+use crate::memory::pmm::PMM;
 
 const MULTIBOOT_HEADER_MAGIC: u32 = 0xe85250d6;
 const MULTIBOOT_HEADER_ARCHITECTURE: u32 = 0;
@@ -30,7 +30,6 @@ pub struct MultibootHeader {
 	end_tag_flags: u16,
 	end_tag_size: u32,
 }
-
 
 #[repr(C)]
 pub struct MultibootInfo {
@@ -81,10 +80,9 @@ pub struct MultibootMemoryMapTag {
 }
 
 #[derive(Debug)]
-
 #[repr(C)]
 pub struct MultibootMemoryMapEntry {
-	pub addr: u64,
+	pub address: u64,
 	pub len: u64,
 	pub entry_type: u32,
 	zero: u32,
@@ -114,23 +112,26 @@ pub fn u8_to_str(pointer: *const u8) -> &'static str {
 	}
 }
 
-pub fn init(magic: u32, addr: u32) {
+pub fn validate_multiboot(magic: u32, address: u32) {
 	if magic != MULTIBOOT_BOOTLOADER_MAGIC {
 		panic!("Invalid multiboot magic number: {:#x}", magic);
 	}
 
-	if addr & 0x7 != 0 {
-		panic!("Unaligned multiboot address: {:#x}", addr);
+	if address & 0x7 != 0 {
+		panic!("Unaligned multiboot address: {:#x}", address);
 	}
+}
 
-	let multiboot_info: &MultibootInfo = unsafe { &*(addr as *const MultibootInfo) };
+pub fn read_multiboot_info(address: u32) {
+	let multiboot_info: &MultibootInfo = unsafe { &*(address as *const MultibootInfo) };
 	println_serial!("Announced mbi size: {:#x}", multiboot_info.total_size);
 
 	let mut current_tag: *const MultibootTag = multiboot_info.tags.as_ptr();
 	let mut tag: &MultibootTag = unsafe { &*current_tag };
 
 	let mut meminfo: Option<&MultibootTagBasicMemInfo> = None;
-    let mut mmap: Option<&MultibootMemoryMapTag> = None;
+	let mut mmap: Option<&MultibootMemoryMapTag> = None;
+	let mut pmm = PMM.lock();
 
 	while tag.tag_type != MULTIBOOT_TAG_TYPE_END {
 		//println_serial!("Tag {:#x} size: {:#x}", tag.tag_type, tag.size);
@@ -161,56 +162,18 @@ pub fn init(magic: u32, addr: u32) {
 				);
 			}
 			MULTIBOOT_TAG_TYPE_MMAP => {
-				let nmap: *const MultibootMemoryMapEntry = unsafe {
-					(*(current_tag as *const MultibootMemoryMapTag))
-						.entries
-						.as_ptr()
+				let nmap_tag = unsafe { &*(current_tag as *const MultibootMemoryMapTag) };
+
+				let entries_count = (nmap_tag.size - nmap_tag.entry_size) / nmap_tag.entry_size;
+				let memory_map_entries = unsafe {
+					core::slice::from_raw_parts(nmap_tag.entries.as_ptr(), entries_count as usize)
 				};
-				mmap = Some(unsafe { &*(current_tag as *const MultibootMemoryMapTag) });
-				println_serial!("Memory map:");
-				for i in 0..(mmap.unwrap().size - mmap.unwrap().entry_size) / mmap.unwrap().entry_size {
-					let entry: &MultibootMemoryMapEntry = unsafe { &*nmap.add(i as usize) };
-					println_serial!(
-						"  {:#x}-{:#x} type: {:#x}  len: {:#x}",
-						entry.addr,
-						entry.addr + entry.len,
-						entry.entry_type,
-						entry.len
-					);
-				}
-				
-				let entries_count = (mmap.unwrap().size - mmap.unwrap().entry_size) / mmap.unwrap().entry_size;
-				let memory_map_entries =
-					unsafe { core::slice::from_raw_parts(nmap, entries_count as usize) };
-				process_memory_map(memory_map_entries);
+				pmm.memory_map_tag = Some(nmap_tag);
+				pmm.memory_map_entries = Some(memory_map_entries);
 			}
 			_ => {}
 		}
 		current_tag = (current_tag as usize + (tag.size as usize + 7) & !7) as *const MultibootTag;
 		tag = unsafe { &*current_tag };
 	}
-	
-	// A changer
-	use crate::memory::pmm::physical_memory_init;
-	print_serial!("{:#?}", meminfo);
-	print_serial!("{:#?}", mmap);
-	physical_memory_init(meminfo.unwrap(), mmap.unwrap());
-}
-
-fn process_memory_map(memory_map_entries: &[MultibootMemoryMapEntry]) {
-	let mut largest_region = (0, 0);
-	for entry in memory_map_entries {
-		if entry.entry_type == 1 {
-			if entry.len > largest_region.1 {
-				largest_region = (entry.addr, entry.len);
-			}
-		}
-	}
-
-	unsafe {
-		PAGE_TABLE_START = largest_region.0 as usize;
-		PAGE_TABLE_END = PAGE_TABLE_START + largest_region.1 as usize;
-	}
-
-	println_serial!("Largest region: {:#x}-{:#x}", largest_region.0, largest_region.0 + largest_region.1);
 }

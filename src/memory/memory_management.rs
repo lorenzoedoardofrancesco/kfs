@@ -1,12 +1,11 @@
 use bitflags::bitflags;
 
+use super::pmm::PMM;
+
 /// Constants defining the page size and the number of entries in a page table.
 /// The page size is 4 KiB and the number of entries in a page table is 1024.
 const PAGE_SIZE: usize = 4096;
 const ENTRY_COUNT: usize = 1024;
-
-pub static mut PAGE_TABLE_START: usize = 0;
-pub static mut PAGE_TABLE_END: usize = 0;
 
 bitflags! {
 	/// Flags for page table entries. These flags represent the following:
@@ -20,7 +19,7 @@ bitflags! {
 	/// - PAGE_SIZE: If set, the page is 4 MiB in size. Otherwise, it is 4 KiB.
 	/// - GLOBAL: If set, the page is global.
 	/// - AVAILABLE: Bits available for use by the OS.
-	pub struct PageTableFlags: u32 {
+	pub struct PageTableFlags: usize {
 		const PRESENT = 1 << 0;
 		const READ_WRITE = 1 << 1;
 		const USER_SUPERVISOR = 1 << 2;
@@ -74,14 +73,14 @@ impl PageDirectory {
 
 		if !entry.is_set() {
 			// Allocate a new page table if not already present
-		//	let new_table = match KernelAllocator.kmalloc() as *mut PageTable {
-		//		ptr if !ptr.is_null() => ptr,
-		//		_ => return Err(PageTableError::AllocationFailed),
-		//	};
-		//	entry.set(
-		//		Frame::containing_address(new_table as usize),
-		//		flags | PageTableFlags::PRESENT,
-		//	);
+			//	let new_table = match KernelAllocator.kmalloc() as *mut PageTable {
+			//		ptr if !ptr.is_null() => ptr,
+			//		_ => return Err(PageTableError::AllocationFailed),
+			//	};
+			//	entry.set(
+			//		Frame::containing_address(new_table as usize),
+			//		flags | PageTableFlags::PRESENT,
+			//	);
 		}
 
 		let table_address = entry.start_address();
@@ -136,9 +135,9 @@ impl PageDirectory {
 	fn get_table(&self, index: usize) -> Option<&PageTable> {
 		let entry = &self.entries[index];
 		if entry.is_set() {
-			let addr: usize = entry.start_address();
+			let address = entry.start_address();
 			if entry.is_valid_page_table_address() {
-				unsafe { Some(&*(addr as *const PageTable)) }
+				unsafe { Some(&*(address as *const PageTable)) }
 			} else {
 				None
 			}
@@ -151,9 +150,9 @@ impl PageDirectory {
 	fn get_table_mut(&mut self, index: usize) -> Option<&mut PageTable> {
 		let entry = &self.entries[index];
 		if entry.is_set() {
-			let addr = entry.start_address();
+			let address = entry.start_address();
 			if entry.is_valid_page_table_address() {
-				unsafe { Some(&mut *(addr as *mut PageTable)) }
+				unsafe { Some(&mut *(address as *mut PageTable)) }
 			} else {
 				None
 			}
@@ -213,7 +212,7 @@ impl PageTable {
 
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
-struct PageTableEntry(u32);
+struct PageTableEntry(usize);
 
 impl PageTableEntry {
 	fn new() -> Self {
@@ -222,7 +221,7 @@ impl PageTableEntry {
 
 	pub fn set(&mut self, frame: Frame, flags: PageTableFlags) {
 		assert!(frame.start_address() % PAGE_SIZE == 0);
-		self.0 = (frame.start_address() as u32) | flags.bits();
+		self.0 = (frame.start_address() as usize) | flags.bits();
 	}
 
 	fn is_set(&self) -> bool {
@@ -238,11 +237,15 @@ impl PageTableEntry {
 	}
 
 	pub fn is_valid_page_table_address(&self) -> bool {
+		let memory_info = PMM.lock();
 		let address = self.start_address();
 
 		unsafe {
 			// Check if the address is within the valid memory range.
-			let is_within_range = address >= PAGE_TABLE_START && address <= PAGE_TABLE_END;
+			let is_within_range = address >= memory_info.usable_regions[1].start_address
+				&& address
+					<= memory_info.usable_regions[1].start_address
+						+ memory_info.usable_regions[1].size;
 
 			// Check if the address is page aligned.
 			let is_page_aligned = address % PAGE_SIZE == 0;
@@ -257,7 +260,7 @@ impl PageTableEntry {
 pub unsafe fn enable_paging() {
 	use core::arch::asm;
 
-	let page_directory = page_directory as *const PageDirectory as u32;
+	let page_directory = page_directory as *const PageDirectory as usize;
 	asm!("mov eax, $0; mov cr3, eax; mov eax, cr0; or eax, 0x80000000; mov cr0, eax" :: "r"(page_directory) : "eax" : "intel", "volatile");
 }
 
