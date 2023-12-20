@@ -2,6 +2,9 @@ FROM alpine:latest
 
 WORKDIR /kfs
 
+RUN addgroup -g 4313 2022_paris && \
+    adduser -D -u 103824 -G 2022_paris lsimanic
+
 RUN apk update && apk add --no-cache make curl musl-dev gcc nasm grub xorriso 
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
@@ -17,6 +20,5 @@ RUN rustup toolchain install nightly-x86_64-unknown-linux-musl && \
 	ar x grub-pc-bin_2.12\~rc1-12_amd64.deb && \
 	tar -xf data.tar.xz -C / && \
 	rm -rf grub-pc-bin_2.12\~rc1-12_amd64.deb data.tar.xz
-
 
 CMD ["tail", "-f", "/dev/null"]
