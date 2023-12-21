@@ -1,8 +1,47 @@
-//! # Kernel/Main Entry Point
+//! # Keystroke Fusion Surgery
+//! ## Rust Kernel for i386 x86 Architecture
 //!
-//! This is the main entry point for the kernel. It includes the initialization of core system components
-//! such as GDT, IDT, and handling the primary execution loop. This file sets up the necessary environment
-//! for the kernel to function correctly and provides the panic handler for handling system-wide panic conditions.
+//! This project is a minimal operating system kernel for the i386 x86 architecture, written entirely in Rust.
+//! The kernel is designed with a focus on simplicity, modularity, and safety, leveraging Rust's powerful
+//! features like ownership, zero-cost abstractions, and type safety.
+//!
+//! ## Overview
+//!
+//! The kernel includes fundamental components necessary for an operating system such as:
+//!
+//! - **Boot Process**: Handled by the `boot` module, setting up the environment for the kernel to run.
+//! - **Global Descriptor Table (GDT)**: Managed by the `structures::gdt` module, crucial for segment
+//!   memory management.
+//! - **Interrupt Descriptor Table (IDT)**: Implemented in the `structures::idt` module, managing hardware
+//!   and software interrupts.
+//! - **Programmable Interrupt Controller (PIC)**: Managed by `exceptions::pic8259`, allowing control over
+//!   interrupt signals.
+//! - **Interrupt Handling**: Facilitated by `exceptions::interrupts`, providing core interrupt and exception
+//!   handling mechanisms.
+//! - **Memory Management**: Basic memory management utilities.
+//! - **VGA Text Mode Buffer**: For displaying text on the screen, implemented in `vga::video_graphics_array`.
+//! - **Shell Interface**: A simple shell interface provided by the `shell` module, for user interaction
+//!   and command execution.
+//! - **Debugging and Logging**: Tools for debugging and serial communication.
+//!
+//! ## Running the Kernel
+//!
+//! The kernel is intended to be run on i386-compatible hardware or emulators (like QEMU).
+//! Building and running require a nightly Rust compiler due to the usage of unstable features.
+//! The containerized development environment can be used to build and run the kernel.
+//! The kernel can be built and run using the following commands:
+//! 	make
+//!
+//! ## Safety and Concurrency
+//!
+//! While Rust provides many guarantees at compile-time, unsafe code is used for low-level operations,
+//! which must be carefully managed. Concurrency in the kernel is minimal but critical, especially in
+//! the handling of interrupts.
+//!
+//! ## MIT License
+//! 
+//! Copyright Keystroke-Fusion-Surgery (c) 2023 Lsimanic-Amuller 42
+
 
 #![no_std]
 #![no_main]
