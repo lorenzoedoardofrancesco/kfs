@@ -7,8 +7,10 @@
 use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
 use crate::exceptions::pic8259::ChainedPics;
 use crate::utils::io::inb;
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicU32, Ordering};
 use spin::Mutex;
+
+pub static TICKS: AtomicU32 = AtomicU32::new(0);
 
 pub const PIC_1_OFFSET: u8 = 32;
 
@@ -175,6 +177,7 @@ pub fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
 		PICS.lock()
 			.notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 	}
+	TICKS.fetch_add(1, Ordering::SeqCst);
 }
 
 pub fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {

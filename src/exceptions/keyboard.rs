@@ -1,6 +1,7 @@
 use crate::shell;
 use crate::shell::history::HISTORY;
 use crate::shell::prints::print_welcome_message;
+use crate::vga::parrot::PARROT_ACTIVATED;
 use crate::vga::{prompt, video_graphics_array};
 use core::sync::atomic::{AtomicBool, Ordering};
 
@@ -28,6 +29,14 @@ static ESCAPE_PREFIX: u8 = 0xe0;
 pub fn process_keyboard_input() {
 	if KEYBOARD_INTERRUPT_RECEIVED.load(Ordering::SeqCst) {
 		KEYBOARD_INTERRUPT_RECEIVED.store(false, Ordering::SeqCst);
+	} else {
+		return;
+	}
+
+	let parrot_activated = PARROT_ACTIVATED.load(Ordering::SeqCst);
+	if parrot_activated {
+		PARROT_ACTIVATED.store(false, Ordering::SeqCst);
+		prompt::init();
 	}
 
 	unsafe {
@@ -124,6 +133,9 @@ fn update_modifier_state(scancode: u8) {
 			// 0x40 F6
 			// 0x41 F7
 			// 0x42 F8
+			0xc2 => {
+				PARROT_ACTIVATED.store(true, Ordering::SeqCst);
+			}
 			0x43 => print_welcome_message(),
 			0x44 => change_keyboard_layout(),
 			0x47 => prompt::home(),

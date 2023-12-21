@@ -4,9 +4,11 @@
 //! including string manipulation, reading real-time clock data from CMOS, and performing hex dumps.
 //! These functions are for handling shell input, displaying system time, and debugging.
 
+use crate::exceptions::interrupts::TICKS;
 use crate::shell::{builtins::MAX_LINE_LENGTH, history::Line};
 use crate::utils::io::{inb, outb};
 use core::arch::asm;
+use core::sync::atomic::Ordering;
 
 const CMOS_ADDRESS: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
@@ -76,6 +78,14 @@ pub fn hlt() {
 	unsafe {
 		asm!("hlt", options(nomem, nostack, preserves_flags));
 	}
+}
+
+pub fn get_tick_count() -> u32 {
+	TICKS.load(Ordering::SeqCst)
+}
+
+pub fn get_tick_count() -> u32 {
+	TICKS.load(Ordering::SeqCst)
 }
 
 /// Performs a hex dump starting from a given memory address.
