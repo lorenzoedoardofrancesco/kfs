@@ -1,3 +1,5 @@
+//! Shell Module
+
 /// Shell history
 pub mod history;
 

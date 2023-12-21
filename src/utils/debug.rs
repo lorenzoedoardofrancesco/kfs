@@ -1,3 +1,10 @@
+//! # Serial Port Debugging Module
+//!
+//! Provides functionality for serial port communication, primarily used for debugging purposes.
+//! The module defines methods for initializing the serial port and writing data to it. It includes
+//! the `Debug` struct that implements the `fmt::Write` trait, allowing formatted strings to be sent
+//! over the serial port.
+
 use crate::utils::io::{inb, outb};
 use core::fmt;
 use lazy_static::lazy_static;

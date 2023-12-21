@@ -1,3 +1,9 @@
+//! # Interrupt Handling Module
+//!
+//! Provides functionality for setting up and handling interrupts in an x86 system. This module includes
+//! the initialization of the Programmable Interrupt Controller (PIC), definitions of interrupt handler functions,
+//! and utilities for enabling and disabling interrupts. The module plays a crucial role in the system's
+//! response to hardware and software interrupts.
 use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
 use crate::exceptions::pic8259::ChainedPics;
 use crate::utils::io::inb;
@@ -5,9 +11,14 @@ use core::sync::atomic::Ordering;
 use spin::Mutex;
 
 pub const PIC_1_OFFSET: u8 = 32;
+
+/// Global instance of chained PICs.
 pub static PICS: Mutex<ChainedPics> =
 	Mutex::new(unsafe { ChainedPics::new_contiguous(PIC_1_OFFSET) });
 
+/// Enumeration of interrupt indexes.
+///
+/// Represents various interrupt lines corresponding to different hardware and software interrupts.
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
 #[repr(u8)]
@@ -39,6 +50,12 @@ impl InterruptIndex {
 	}
 }
 
+/// Structure representing an interrupt stack frame.
+///
+/// This structure is pushed onto the stack by the CPU on an interrupt.
+/// It contains the state of the CPU at the time of the interrupt.
+/// The structure is used by the interrupt handler functions to determine
+/// the cause of the interrupt and to handle it appropriately.
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
@@ -49,6 +66,13 @@ pub struct InterruptStackFrame {
 	stack_segment: u32,
 }
 
+/// Handler functions for various interrupts.
+///
+/// Each of these functions handles a specific type of interrupt, such as
+/// divide by zero, page fault, keyboard input, etc.
+///
+/// The functions print a message and the state of the stack frame at the time
+/// of the interrupt. Not yet implemented.
 pub extern "C" fn divide_by_zero(_stack_frame: &mut InterruptStackFrame) {
 	println!("EXCEPTION: DIVIDE BY ZERO\n{:#x?}", _stack_frame);
 }
@@ -165,6 +189,9 @@ pub fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	}
 }
 
+/// Initializes the interrupt handlers.
+///
+/// This function sets up the PICs and enables interrupts in the system.
 pub fn init() {
 	unsafe {
 		PICS.lock().initialize();
@@ -173,6 +200,9 @@ pub fn init() {
 	println_serial!("Interrupts successfully initialized");
 }
 
+/// Enables interrupts on the CPU.
+///
+/// This function enables interrupts on the CPU by setting the interrupt flag in the CPU's flags register.
 pub fn enable() {
 	use core::arch::asm;
 	unsafe {
@@ -180,6 +210,9 @@ pub fn enable() {
 	}
 }
 
+/// Disables interrupts on the CPU.
+///
+/// This function disables interrupts on the CPU by clearing the interrupt flag in the CPU's flags register.
 pub fn disable() {
 	use core::arch::asm;
 	unsafe {

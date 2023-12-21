@@ -1,3 +1,8 @@
+//! Access flags for segments.
+//!
+//! See Intel 3a, Section 3.4.5 "Segment Descriptors"
+//! and Section 3.5 "System Descriptor Types"
+
 /// Maximum segment size
 pub const MAX_SEGMENT_SIZE: u32 = 0xfffff;
 /// No offset

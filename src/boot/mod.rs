@@ -1,2 +1,3 @@
-/// This module contains the multiboot structs and functions.
+//! This module contains the boot structs and functions.
+
 pub mod multiboot;

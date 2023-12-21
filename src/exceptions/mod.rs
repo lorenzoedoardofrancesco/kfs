@@ -1,3 +1,5 @@
+//! Exceptions and interrupts Module
+
 /// Keyboard driver
 pub mod keyboard;
 

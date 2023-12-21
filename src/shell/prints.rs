@@ -1,14 +1,22 @@
+//! # Shell Built-in Command Print Functions
+//!
+//! This module contains functions to print information to the VGA text buffer in response to
+//! shell commands. It includes functions for handling unknown commands, printing a welcome message,
+//! displaying a stack trace, and providing a help menu with available commands.
+
 use crate::exceptions::interrupts;
 use crate::shell::builtins::clear;
 use crate::utils::librs::hexdump;
 use crate::vga::prompt::PROMPT;
 use crate::vga::video_graphics_array::WRITER;
 
+/// Prints an unknown command error message.
 pub fn print_unknown_command(line: &str) {
 	let len = line.len().min(50);
 	println!("Unknown command: {}", line[0..len].trim());
 }
 
+/// Prints the welcome message.
 pub fn print_welcome_message() {
 	clear();
 	println!("                                     :---------:    .---------:---------- ");
@@ -37,6 +45,10 @@ pub fn print_welcome_message() {
 	PROMPT.lock().init();
 }
 
+/// Prints the current stack trace.
+///
+/// Extracts and displays a hexadecimal dump of the current stack.
+/// Useful for debugging purposes.
 pub fn print_stack(line: &str) {
 	let args = &line["stack".len()..].trim();
 	let mut parts = args.split_whitespace();
@@ -62,6 +74,7 @@ pub fn print_stack(line: &str) {
 	hexdump(address, num_bytes);
 }
 
+/// Prints a formatted line in the help menu.
 pub fn print_help_line(command: &str, description: &str) {
 	print!("  {:13}", command);
 	printraw("Z");
@@ -73,6 +86,7 @@ pub fn print_help_line(command: &str, description: &str) {
 	}
 }
 
+/// Displays the help menu.
 pub fn help() {
 	clear();
 	printraw("immmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm[Z");
@@ -104,7 +118,7 @@ pub fn help() {
 	println!("");
 }
 
-//je vais l'ecraser
+/// Prints raw strings to the VGA buffer.
 pub fn printraw(string: &str) {
 	interrupts::disable();
 	WRITER.lock().write_string_raw(string);

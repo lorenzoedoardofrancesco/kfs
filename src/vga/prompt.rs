@@ -1,3 +1,10 @@
+//! Module for managing the command-line prompt in a shell-like interface.
+//!
+//! This module provides the functionality to handle input and editing of text
+//! at a command prompt. It manages the insertion, deletion, and navigation of
+//! characters within the prompt, as well as executing commands upon receiving
+//! an enter key press.
+
 use crate::shell::builtins::readline;
 use crate::vga::video_graphics_array::{VGA_COLUMNS, WRITER};
 use lazy_static::lazy_static;
@@ -7,12 +14,19 @@ pub static PROMPT_STRING: &str = "$> ";
 pub static PROMPT_LENGTH: usize = PROMPT_STRING.len();
 
 lazy_static! {
+	/// Static Mutex-protected global instance of the prompt.
+	///
+	/// This instance represents the current state of the command-line prompt
 	pub static ref PROMPT: Mutex<Prompt> = Mutex::new(Prompt {
 		buffer: [0; VGA_COLUMNS],
 		length: 0,
 	});
 }
 
+/// Represents the command-line prompt.
+///
+/// This struct maintains the state of the prompt, including the buffer
+/// for the current input line and the length of the input.
 pub struct Prompt {
 	buffer: [u8; VGA_COLUMNS],
 	pub length: usize,

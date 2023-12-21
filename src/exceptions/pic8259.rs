@@ -1,3 +1,22 @@
+//! # Programmable Interrupt Controller (PIC)
+//!
+//! Provides functionality to interact with and manage the Programmable Interrupt Controllers (PICs)
+//! in x86 systems. This module defines structures and methods for initializing the PICs, handling
+//! interrupts, and sending end-of-interrupt commands. The PIC is crucial for managing hardware
+//! interrupts in early x86-based systems.
+//!
+//! ## Overview
+//!
+//! The PICs is a pair of chips that are used to manage hardware interrupts in x86 systems. The PIC
+//! is a legacy component that is no longer used in modern systems, but it is still present in
+//! x86-based systems for backwards compatibility. The PIC is a pair of chips that are cascaded
+//! together to provide 15 hardware interrupts. The PICs are cascaded together by connecting the
+//! interrupt request (IRQ) 2 pin on the primary PIC to the interrupt acknowledge (INTA) pin on the
+//! secondary PIC. The primary PIC is connected to the CPU via the IRQ 0 pin, and the secondary PIC
+//! is connected to the CPU via the IRQ 8 pin. The PICs are initialized by sending a series of
+//! commands to the PICs. The PICs are then configured to use the 8086/8088 mode, which is the
+//! operating mode of the CPU.
+//!
 use crate::utils::io::{inb, outb};
 
 const CMD_INIT: u8 = 0x11;

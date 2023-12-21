@@ -1,3 +1,5 @@
+//! Utility functions
+
 /// Serial port driver
 pub mod debug;
 

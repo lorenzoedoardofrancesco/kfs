@@ -1,3 +1,21 @@
+//! Module for VGA text mode buffer manipulation.
+//!
+//! Provides functionality to write text to the VGA text mode buffer,
+//! which is a common method for displaying text on the screen in many
+//! bare-metal or low-level systems, especially in the context of early
+//! kernel development.
+//!
+//! ## Overview
+//!
+//! The VGA text mode buffer is a region of memory that is mapped to the
+//! display hardware. Writing text to this buffer will cause the text to
+//! be displayed on the screen. The VGA text mode buffer is typically
+//! located at physical address `0xb8000`. The buffer is 25 lines high
+//! and 80 columns wide. Each character cell in the buffer consists of
+//! two bytes: one byte for the ASCII character, and one byte for the
+//! color. The color byte specifies the foreground and background color
+//! of the character cell.
+
 use crate::utils::io::outb;
 use crate::vga::prompt::PROMPT;
 use core::fmt;
@@ -16,34 +34,38 @@ const VGA_CTRL_REGISTER: u16 = 0x3d4;
 const VGA_DATA_REGISTER: u16 = 0x3d5;
 
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
-        column_position: 0,
-        color: Color::new(ColorCode::Green, ColorCode::Black),
-        buffer: unsafe { &mut *(VGA_BUFFER_ADDRESS as *mut VgaBuffer) },
-        screen: [
-            ScreenState {
-                column_position: 0,
-                color: Color::new(ColorCode::Green, ColorCode::Black),
-                buffer: [0; VGA_BUFFER_SIZE],
-            },
-            ScreenState {
-                column_position: 0,
-                color: Color::new(ColorCode::DarkGray, ColorCode::Pink),
-                buffer: [0; VGA_BUFFER_SIZE],
-            },
-            ScreenState {
-                column_position: 0,
-                color: Color::new(ColorCode::Black, ColorCode::LightCyan),
-                buffer: [0; VGA_BUFFER_SIZE],
-            },
-            ScreenState {
-                column_position: 0,
-                color: Color::new(ColorCode::Yellow, ColorCode::Red),
-                buffer: [0; VGA_BUFFER_SIZE],
-            },
-        ],
-        current_display: 0,
-    });
+	/// Global writer instance for the VGA buffer.
+	///
+	/// This writer is used to write text to the VGA text buffer.
+	/// It is protected by a mutex to ensure safe concurrent access.
+	pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+		column_position: 0,
+		color: Color::new(ColorCode::Green, ColorCode::Black),
+		buffer: unsafe { &mut *(VGA_BUFFER_ADDRESS as *mut VgaBuffer) },
+		screen: [
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Green, ColorCode::Black),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Yellow, ColorCode::Brown),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Black, ColorCode::LightCyan),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+			ScreenState {
+				column_position: 0,
+				color: Color::new(ColorCode::Yellow, ColorCode::Red),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+		],
+		current_display: 0,
+	});
 }
 
 #[allow(dead_code)]
@@ -68,6 +90,9 @@ pub enum ColorCode {
 	White = 0xf,
 }
 
+/// Represents a color code for a character cell in the VGA text buffer.
+///
+/// A color code consists of a foreground color and a background color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 struct Color(u8);
@@ -88,6 +113,9 @@ impl Color {
 	}
 }
 
+/// Represents a character cell in the VGA text buffer.
+///
+/// Each cell consists of an ASCII character and its associated color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 struct ScreenChar {
@@ -95,6 +123,10 @@ struct ScreenChar {
 	color: Color,
 }
 
+/// The VGA text buffer.
+///
+/// This struct represents the VGA text buffer and provides methods
+/// for reading and writing characters to it.
 #[repr(transparent)]
 struct VgaBuffer {
 	chars: [[ScreenChar; VGA_COLUMNS]; VGA_ROWS],
@@ -116,6 +148,10 @@ struct ScreenState {
 	buffer: [u8; VGA_BUFFER_SIZE],
 }
 
+/// Writer for the VGA text buffer.
+///
+/// This struct provides methods to write text to the VGA text buffer,
+/// handle new lines, and manage cursor position.
 pub struct Writer {
 	pub column_position: usize,
 	color: Color,
@@ -260,6 +296,9 @@ impl Writer {
 	}
 }
 
+/// Changes the currently displayed screen.
+///
+/// This function switches between different virtual screens.
 pub fn change_display(display: usize) {
 	if WRITER.lock().current_display == display {
 		return;
@@ -270,6 +309,9 @@ pub fn change_display(display: usize) {
 	PROMPT.lock().init();
 }
 
+/// Changes the current color of the VGA text buffer.
+///
+/// Toggles between increasing the foreground or background color.
 pub fn change_color(foreground: bool) {
 	if foreground {
 		WRITER.lock().color.increase_foreground();
@@ -279,6 +321,13 @@ pub fn change_color(foreground: bool) {
 	WRITER.lock().update_display();
 }
 
+/// Converts a given byte to CP437 encoding.
+///
+/// CP437 is a character encoding commonly used in the VGA text mode
+/// buffer. It is a superset of ASCII, meaning that all ASCII characters
+/// are encoded the same way in CP437 as they are in ASCII. However,
+/// CP437 also contains many additional characters that are not present
+/// in ASCII.
 fn convert_to_cp437(byte: u8) -> u8 {
 	match byte {
 		0x01 => 0x80, // Ç

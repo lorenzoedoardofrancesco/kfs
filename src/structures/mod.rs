@@ -1,3 +1,5 @@
+//! Structures for the x86 architecture
+
 /// Global Descriptor Table
 pub mod gdt;
 
