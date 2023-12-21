@@ -1,7 +1,5 @@
-use crate::exceptions::interrupts;
 use crate::shell::{builtins::MAX_LINE_LENGTH, history::Line};
 use crate::utils::io::{inb, outb};
-use crate::vga::video_graphics_array::WRITER;
 use core::arch::asm;
 
 const CMOS_ADDRESS: u16 = 0x70;
@@ -49,12 +47,6 @@ pub fn get_rtc_date() -> (u8, u8, u8) {
 	let day = bcd_to_binary(read_cmos(0x07));
 
 	(year, month, day)
-}
-
-pub fn clear() {
-	interrupts::disable();
-	WRITER.lock().clear_screen();
-	interrupts::enable();
 }
 
 #[inline]

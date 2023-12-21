@@ -80,7 +80,7 @@ impl Prompt {
 		WRITER.lock().update_line(buffer_as_str);
 	}
 
-	pub fn init(&mut self) {
+	fn init(&mut self) {
 		self.clear();
 		WRITER.lock().column_position = 0;
 		self.insert_string(PROMPT_STRING);
@@ -134,4 +134,8 @@ pub fn tab() {
 
 pub fn enter() {
 	PROMPT.lock().insert_char(b'\n', false);
+}
+
+pub fn init() {
+	PROMPT.lock().init();
 }

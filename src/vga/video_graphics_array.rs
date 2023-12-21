@@ -1,5 +1,6 @@
+use crate::exceptions::interrupts;
 use crate::utils::io::outb;
-use crate::vga::prompt::PROMPT;
+use crate::vga::prompt;
 use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -267,16 +268,18 @@ pub fn change_display(display: usize) {
 	WRITER.lock().backup_display();
 	WRITER.lock().restore_display(display);
 	WRITER.lock().current_display = display;
-	PROMPT.lock().init();
+	prompt::init();
 }
 
 pub fn change_color(foreground: bool) {
+	interrupts::disable();
 	if foreground {
 		WRITER.lock().color.increase_foreground();
 	} else {
 		WRITER.lock().color.increase_background();
 	}
 	WRITER.lock().update_display();
+	interrupts::enable();
 }
 
 fn convert_to_cp437(byte: u8) -> u8 {
