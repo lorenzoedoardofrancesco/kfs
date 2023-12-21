@@ -10,7 +10,6 @@ bench = false
 
 [dependencies]
 spin = "0.9.8"
-bitflags = "2.4.1"
 
 [dependencies.lazy_static]
 version = "1.4.0"

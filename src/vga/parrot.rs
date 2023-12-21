@@ -1,7 +1,11 @@
-use crate::{shell::builtins, utils::librs, exceptions::interrupts};
-use core::sync::atomic::{AtomicUsize, Ordering};
+use crate::shell::builtins::clear;
+use crate::utils::librs;
 use crate::vga::video_graphics_array;
-use crate::interrupts::{enable, disable};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use librs::get_tick_count;
+
+pub static PARROT_ACTIVATED: AtomicBool = AtomicBool::new(false);
+static PARROT_FRAME: AtomicU32 = AtomicU32::new(0);
 
 static PARROT: [&str; 10] = [
 	"                                             .cccc;;cc;';c.                                                               .,:dkdc:;;:c:,:d:.                                                             .loc'.,cc::c:::,..;:.                                                         .cl;....;dkdccc::,...c;                                                        .c:,';:'..ckc',;::;....;c.                                                    .c:'.,dkkoc:ok:;llllc,,c,';:.                                                  .;c,';okkkkkkkk:;lllll,:kd;.;:,.                                                co..:kkkkkkkkkk:;llllc':kkc..oNc                                              .cl;.,oxkkkkkkkkkc,:cll;,okkc'.cO;                                              ;k:..ckkkkkkkkkkkl..,;,.;xkko:',l'                                             .,...';dkkkkkkkkkkd;.....ckkkl'.cO;                                          .,,:,.;oo:ckkkkkkkkkkkdoc;;cdkkkc..cd,                                       .cclo;,ccdkkl;llccdkkkkkkkkkkkkkkkd,.c;                                        .lol:;;okkkkkxooc::coodkkkkkkkkkkkko'.oc                                      .c:'..lkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkd,.oc                                     .lo;,:cdkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkd,.c;                                   ,dx:..;lllllllllllllllllllllllllllllllllc'...                                   cNO;........................................                ",
@@ -16,16 +20,17 @@ static PARROT: [&str; 10] = [
 	"                                                                                                                                  ,ddoodd,                                                                   .cc' ,ooccoo,'cc.                                                            .ccldo;...',,...;oxdc.                                                       .,,:cc;.,'..;lol;;,'..lkl.                                                     .dOc';:ccl;..;dl,.''.....oc                                                   .,lc',cdddddlccld;.,;c::'..,cc:.                                                cNo..:ddddddddddd;':clll;,c,';xc                                               .lo;,clddddddddddd;':clll;:kc..;'                                             .,c;..:ddddddddddddd:';clll,;ll,..                                              ;Oc..';:ldddddddddddl,.,c:;';dd;..                                            .''',:c:,'cdddddddddddo:,''..'cdd;..                                          .cdc';lddd:';lddddddddddddd;.';lddl,..                                       .,;::;,cdddddol;;lllllodddddddlcldddd:.'l;                                     .dOc..,lddddddddlcc:;'';cclddddddddddd;;ll.                                   .coc,;::ldddddddddddddlcccc:ldddddddddl:,cO;                                 ,xl::,..,cccccccccccccccccccccccccccccccc:;':xx,                                cNd.........................................;lOc            ",
 ];
 
-static CURRENT_FRAME_INDEX: AtomicUsize = AtomicUsize::new(0);
-
 pub fn animate_parrot() {
-	let frame_index = CURRENT_FRAME_INDEX.fetch_add(1, Ordering::Relaxed);
-	let frame = &PARROT[frame_index % PARROT.len()];
+	let activated: bool = PARROT_ACTIVATED.load(Ordering::SeqCst);
+	let ticks = get_tick_count();
 
-	interrupts::disable();
-	print!("{}", frame);
-	//video_graphics_array::change_color(true);
-	//video_graphics_array::change_color(false);
-	interrupts::enable()
+	if activated && ticks % 2 == 0 {
+		let frame_index = PARROT_FRAME.fetch_add(1, Ordering::SeqCst) as usize;
+		let frame = &PARROT[frame_index % PARROT.len()];
+
+		clear();
+		print!("{:160}{}{:240}", " ", frame, " ");
+		video_graphics_array::change_color(true);
+		//video_graphics_array::change_color(false);
+	}
 }
-

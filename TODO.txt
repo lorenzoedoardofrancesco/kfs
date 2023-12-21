@@ -1,9 +1,6 @@
 Pour Lorenzo:
 FAIRE OBJDUMP -> PRINT STACK DANS .OBJ
 
-Makefile a regler: rm .iso avant make
-Linker a bien bien bien bien bien verifier
-
 ✓✓✓✓✓✓✓✓✓✓✓✓✓
 ✓✓✓ KFS-1 ✓✓✓
 ✓✓✓✓✓✓✓✓✓✓✓✓✓
