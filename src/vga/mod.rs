@@ -5,3 +5,4 @@ pub mod prompt;
 
 /// Represents the VGA text buffer.
 pub mod video_graphics_array;
+// pub mod parrot;

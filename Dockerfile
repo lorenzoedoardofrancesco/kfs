@@ -2,9 +2,6 @@ FROM alpine:latest
 
 WORKDIR /kfs
 
-RUN addgroup -g 4313 2022_paris && \
-    adduser -D -u 103824 -G 2022_paris lsimanic
-
 RUN apk update && apk add --no-cache make curl musl-dev gcc nasm grub xorriso 
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \

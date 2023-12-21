@@ -7,7 +7,7 @@
 
 use crate::shell::builtins::{MAX_HISTORY_LINES, MAX_LINE_LENGTH};
 use crate::utils::librs::{array_cmp, array_to_str, str_to_array};
-use crate::vga::prompt::PROMPT;
+use crate::vga::prompt::{PROMPT, self};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -68,7 +68,7 @@ impl History {
 	}
 
 	pub fn print_prompt(&self) {
-		PROMPT.lock().init();
+		prompt::init();
 		PROMPT
 			.lock()
 			.insert_string(array_to_str(self.get(self.index)));

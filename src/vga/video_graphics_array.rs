@@ -17,7 +17,7 @@
 //! of the character cell.
 
 use crate::utils::io::outb;
-use crate::vga::prompt::PROMPT;
+use crate::vga::prompt;
 use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -306,19 +306,21 @@ pub fn change_display(display: usize) {
 	WRITER.lock().backup_display();
 	WRITER.lock().restore_display(display);
 	WRITER.lock().current_display = display;
-	PROMPT.lock().init();
+	prompt::init();
 }
 
 /// Changes the current color of the VGA text buffer.
 ///
 /// Toggles between increasing the foreground or background color.
 pub fn change_color(foreground: bool) {
+	interrupts::disable();
 	if foreground {
 		WRITER.lock().color.increase_foreground();
 	} else {
 		WRITER.lock().color.increase_background();
 	}
 	WRITER.lock().update_display();
+	interrupts::enable();
 }
 
 /// Converts a given byte to CP437 encoding.

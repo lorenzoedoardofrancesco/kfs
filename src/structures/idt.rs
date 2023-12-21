@@ -162,13 +162,6 @@ lazy_static! {
 		idt[20] = IdtDescriptor::new(VIRTUALIZATION_EXCEPTION as u32, 0x08, 0x8e);
 		idt[InterruptIndex::Timer.as_usize()] = IdtDescriptor::new(TIMER_INTERRUPT as u32, 0x08, 0x8e);
 		idt[InterruptIndex::Keyboard.as_usize()] = IdtDescriptor::new(KEYBOARD_INTERRUPT as u32, 0x08, 0x8e);
-		/*
-		idt[InterruptIndex::Rtc.as_usize()] = IdtDescriptor::new(
-			rtc_interrupt as u32,
-			0x08,
-			0x8e
-		);
-		 */
 		idt
 	};
 }

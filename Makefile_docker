@@ -9,7 +9,7 @@ release:
 	@cargo build --release
 	@mkdir -p build
 	@nasm -f elf32 src/boot/boot.asm -o build/boot.o
-	ld -m elf_i386 -n -o isofiles/boot/kfs.bin -T linker.ld build/boot.o $(RELEASE_TARGET)/libkfs.a $(NO_OUTPUT)
+	@ld -m elf_i386 -n -o isofiles/boot/kfs.bin -T linker.ld build/boot.o $(RELEASE_TARGET)/libkfs.a $(NO_OUTPUT)
 	@grub-mkrescue -o kfs.iso isofiles $(NO_OUTPUT)
 
 debug:
@@ -22,7 +22,7 @@ debug:
 	@grub-mkrescue -o kfs.iso isofiles $(NO_OUTPUT)
 
 clean:
-	cargo clean
+	@cargo clean
 	@rm -rf isofiles/boot/kfs.bin
 	@rm -rf isofiles/kfs.iso
 	@rm -rf build

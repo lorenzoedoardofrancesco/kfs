@@ -7,7 +7,7 @@
 use crate::exceptions::interrupts;
 use crate::shell::builtins::clear;
 use crate::utils::librs::hexdump;
-use crate::vga::prompt::PROMPT;
+use crate::vga::prompt;
 use crate::vga::video_graphics_array::WRITER;
 
 /// Prints an unknown command error message.
@@ -42,7 +42,7 @@ pub fn print_welcome_message() {
 	println!("                                     .----------                          ");
 	println!("");
 	println!("                       Welcome to KFC! Type 'help' for a list of commands!");
-	PROMPT.lock().init();
+	prompt::init();
 }
 
 /// Prints the current stack trace.

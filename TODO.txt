@@ -1,14 +1,8 @@
-Pour Alix:
-Faire 4 beau preset pour les vga
-Debug mode
-
 Pour Lorenzo:
-Makefile a regler: rm .iso avant make
 FAIRE OBJDUMP -> PRINT STACK DANS .OBJ
 
-Clavier a nettoyer: faire gros tableu QWERTY et AZERTY
+Makefile a regler: rm .iso avant make
 Linker a bien bien bien bien bien verifier
-RTC pour le parrot + ctrl L pour clear
 
 ✓✓✓✓✓✓✓✓✓✓✓✓✓
 ✓✓✓ KFS-1 ✓✓✓
