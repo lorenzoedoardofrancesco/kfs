@@ -84,10 +84,6 @@ pub fn get_tick_count() -> u32 {
 	TICKS.load(Ordering::SeqCst)
 }
 
-pub fn get_tick_count() -> u32 {
-	TICKS.load(Ordering::SeqCst)
-}
-
 /// Performs a hex dump starting from a given memory address.
 pub fn hexdump(mut address: u32, limit: usize) {
 	if limit <= 0 {
