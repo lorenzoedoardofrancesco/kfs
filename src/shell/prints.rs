@@ -104,6 +104,7 @@ pub fn help() {
 	print_help_line("shutdown", "shutdown the system");
 	printraw("lmmmmmmmmmmmmmmmnmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
 	print_help_line("F1-F4", "change between screens");
+	print_help_line("F8", "parrot stroke activated");
 	print_help_line("F9", "display welcome message");
 	print_help_line("F10", "change keyboard layout");
 	print_help_line("F11", "switch text color");

@@ -101,7 +101,7 @@ doc: all
 	@echo "$(YELLOW)\n--- Copying documentation from Docker volume ---\n$(WHITE)"
 	@cp $(MOUNTPOINT)/target/i386-unknown-none/doc doc -r
 	@echo "$(GREEN)Documentation copied to doc$(WHITE)"
-	@firefox doc/kfs/index.html
+	@open doc/kfs/index.html
 
 cargo-clean:
 	@docker exec -t $(CONTAINER_NAME) cargo clean

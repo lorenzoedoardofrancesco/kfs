@@ -97,7 +97,7 @@ fn uname() {
 		"{} {} {} {} {} {}",
 		"KFS",
 		"0.0.1-kfc1-i386",
-		"Kernel-Fusion-Surgery (2023-12-13)",
+		"Keystroke-Fusion-Surgery (2023-12-13)",
 		"i386",
 		"KFS/Deepnux",
 		"A|L"
