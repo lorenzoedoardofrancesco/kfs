@@ -95,11 +95,11 @@ fn shutdown() {
 fn uname() {
 	println!(
 		"{} {} {} {} {} {}",
-		"KFC",
+		"KFS",
 		"0.0.1-kfc1-i386",
-		"DeepFryer 0.0.1-1kfc1 (2023-12-13)",
+		"Kernel-Fusion-Surgery (2023-12-13)",
 		"i386",
-		"KFC/Deepnux",
+		"KFS/Deepnux",
 		"A|L"
 	);
 }
@@ -144,14 +144,3 @@ fn handle_special_commands(line: &str) {
 	}
 }
 
-// Y    ┤
-// Z    ||
-// [    ┐
-// \\   ┘
-// h    └
-// i    ┌
-// j    ┴
-// k    ┬
-// l    ├
-// m    ─
-// n    ┼

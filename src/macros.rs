@@ -29,7 +29,9 @@ macro_rules! println {
 	($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
 }
 
-/// TODO ALIX
+/// Macro for printing formatted text to the top of the VGA buffer.
+/// 
+/// This macro uses the global `WRITER` instance to output text to the top of the VGA text buffer.
 #[macro_export]
 macro_rules! print_top {
 	($($arg:tt)*) => ($crate::macros::print_top(format_args!($($arg)*)));
@@ -122,7 +124,10 @@ pub fn print(args: fmt::Arguments) {
 	interrupts::enable();
 }
 
-/// TODO ALIX
+/// Prints formatted text to the top of the VGA buffer.
+/// 
+/// Disables interrupts, writes formatted text to the top of the VGA buffer, and then re-enables interrupts.
+/// This is used by the `print_top!` macro for actual printing.
 pub fn print_top(args: fmt::Arguments) {
 	use core::fmt::Write;
 	interrupts::disable();
