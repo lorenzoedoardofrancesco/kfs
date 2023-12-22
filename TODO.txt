@@ -1,3 +1,7 @@
+Pour Alix:
+cherche TODO dans le code
+ajouter dans help F8 et ticks (pour savoir les ticks du kernel)
+
 Pour Lorenzo:
 FAIRE OBJDUMP -> PRINT STACK DANS .OBJ
 

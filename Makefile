@@ -124,7 +124,9 @@ clean:
 	rm -f $(FILES_CHANGED_FLAG)
 	rm -f $(ISO_FILE)
 	rm -f output.log
+	rm -f Cargo.lock
 	rm -rf doc
+	rm -rf target
 
 fclean: clean
 	@if [ ! -z "$$(docker images -q $(IMAGE_NAME))" ]; then \
