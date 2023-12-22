@@ -95,8 +95,13 @@ run: all
 		echo "No $(ISO_FILE) found, please run 'make' first."; \
 	fi
 
-doc:
-	@cargo doc --open --document-private-items
+doc: all
+	$(eval MOUNTPOINT=$(shell docker volume inspect --format '{{ .Mountpoint }}' $(VOLUME_NAME)))
+	@docker exec -t $(CONTAINER_NAME) cargo doc --document-private-items
+	@echo "$(YELLOW)\n--- Copying documentation from Docker volume ---\n$(WHITE)"
+	@cp $(MOUNTPOINT)/target/i386-unknown-none/doc doc -r
+	@echo "$(GREEN)Documentation copied to doc$(WHITE)"
+	@firefox doc/kfs/index.html
 
 cargo-clean:
 	@docker exec -t $(CONTAINER_NAME) cargo clean
@@ -118,6 +123,8 @@ clean:
 	rm -f $(CHECKSUM_FILE)
 	rm -f $(FILES_CHANGED_FLAG)
 	rm -f $(ISO_FILE)
+	rm -f output.log
+	rm -rf doc
 
 fclean: clean
 	@if [ ! -z "$$(docker images -q $(IMAGE_NAME))" ]; then \
@@ -126,4 +133,4 @@ fclean: clean
 		echo "No such image: $(IMAGE_NAME)"; \
 	fi
 
-.PHONY: all docker-build docker-create docker-start transfer-and-build check-checksums clean fclean
+.PHONY: all docker-build docker-create docker-start transfer-and-build check-checksums doc clean fclean
