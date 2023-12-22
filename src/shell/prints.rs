@@ -41,7 +41,7 @@ pub fn print_welcome_message() {
 	println!("                                     -@@@@@@@@@@       Lorenzo Simanic    ");
 	println!("                                     .----------                          ");
 	println!("");
-	println!("                       Welcome to KFC! Type 'help' for a list of commands!");
+	println!("                       Welcome to KFS! Type 'help' for a list of commands!");
 	prompt::init();
 }
 

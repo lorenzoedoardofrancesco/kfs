@@ -96,8 +96,8 @@ fn uname() {
 	println!(
 		"{} {} {} {} {} {}",
 		"KFS",
-		"0.0.1-kfc1-i386",
-		"Keystroke-Fusion-Surgery (2023-12-13)",
+		"0.4.2-kfs-i386",
+		"Keystroke-Fusion-Surgery (2023-12-22)",
 		"i386",
 		"KFS/Deepnux",
 		"A|L"
