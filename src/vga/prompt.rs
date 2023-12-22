@@ -151,5 +151,6 @@ pub fn enter() {
 }
 
 pub fn init() {
+	print!("");
 	PROMPT.lock().init();
 }

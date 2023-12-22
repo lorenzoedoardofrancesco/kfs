@@ -1,8 +1,5 @@
-use crate::shell::builtins::clear;
-use crate::utils::librs;
 use crate::vga::video_graphics_array;
 use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use librs::get_tick_count;
 
 pub static PARROT_ACTIVATED: AtomicBool = AtomicBool::new(false);
 static PARROT_FRAME: AtomicU32 = AtomicU32::new(0);
@@ -22,14 +19,12 @@ static PARROT: [&str; 10] = [
 
 pub fn animate_parrot() {
 	let activated: bool = PARROT_ACTIVATED.load(Ordering::SeqCst);
-	let ticks = get_tick_count();
 
-	if activated && ticks % 2 == 0 {
+	if activated {
 		let frame_index = PARROT_FRAME.fetch_add(1, Ordering::SeqCst) as usize;
 		let frame = &PARROT[frame_index % PARROT.len()];
 
-		clear();
-		print!("{:160}{}{:240}", " ", frame, " ");
+		print_top!("{:320}{}{:240}", " ", frame, " ");
 		video_graphics_array::change_color(true);
 		//video_graphics_array::change_color(false);
 	}

@@ -7,7 +7,7 @@
 
 use crate::debug::DEBUG;
 use crate::exceptions::interrupts;
-use crate::vga::video_graphics_array::WRITER;
+use crate::vga::video_graphics_array::{WriteMode, WRITER};
 use core::fmt;
 
 /// Macro for printing formatted text to the VGA buffer.
@@ -27,6 +27,12 @@ macro_rules! print {
 macro_rules! println {
 	() => (print!("\n"));
 	($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
+}
+
+/// TODO ALIX
+#[macro_export]
+macro_rules! print_top {
+	($($arg:tt)*) => ($crate::macros::print_top(format_args!($($arg)*)));
 }
 
 /// Macro for printing formatted text for kernel debugging.
@@ -110,7 +116,19 @@ macro_rules! handler {
 pub fn print(args: fmt::Arguments) {
 	use core::fmt::Write;
 	interrupts::disable();
-	WRITER.lock().write_fmt(args).unwrap();
+	let mut writer = WRITER.lock();
+	writer.set_mode(WriteMode::Normal);
+	writer.write_fmt(args).unwrap();
+	interrupts::enable();
+}
+
+/// TODO ALIX
+pub fn print_top(args: fmt::Arguments) {
+	use core::fmt::Write;
+	interrupts::disable();
+	let mut writer = WRITER.lock();
+	writer.set_mode(WriteMode::Top);
+	writer.write_fmt(args).unwrap();
 	interrupts::enable();
 }
 

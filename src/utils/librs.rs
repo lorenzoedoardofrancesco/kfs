@@ -80,6 +80,7 @@ pub fn hlt() {
 	}
 }
 
+/// TODO ALIX AJOUTER FUNCTION SUR LE SHELL
 pub fn get_tick_count() -> u32 {
 	TICKS.load(Ordering::SeqCst)
 }
