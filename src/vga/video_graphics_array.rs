@@ -41,6 +41,7 @@ lazy_static! {
 	/// It is protected by a mutex to ensure safe concurrent access.
 	pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
 		column_position: 0,
+		row_position: 0,
 		color: Color::new(ColorCode::Green, ColorCode::Black),
 		buffer: unsafe { &mut *(VGA_BUFFER_ADDRESS as *mut VgaBuffer) },
 		screen: [
@@ -66,6 +67,7 @@ lazy_static! {
 			},
 		],
 		current_display: 0,
+		mode: WriteMode::Normal,
 	});
 }
 
@@ -155,14 +157,28 @@ struct ScreenState {
 /// handle new lines, and manage cursor position.
 pub struct Writer {
 	pub column_position: usize,
+	pub row_position: usize,
 	color: Color,
 	buffer: &'static mut VgaBuffer,
 	screen: [ScreenState; NUM_SCREENS],
 	pub current_display: usize,
+	mode: WriteMode,
+}
+
+pub enum WriteMode {
+	Normal,
+	Top,
 }
 
 impl Writer {
 	pub fn write_byte(&mut self, byte: u8) {
+		match self.mode {
+			WriteMode::Normal => self.write_byte_normal(byte),
+			WriteMode::Top => self.write_byte_top(byte),
+		}
+	}
+
+	fn write_byte_normal(&mut self, byte: u8) {
 		if self.column_position == VGA_COLUMNS {
 			self.new_line();
 		}
@@ -181,6 +197,37 @@ impl Writer {
 				self.column_position += 1;
 			}
 		}
+	}
+
+	fn write_byte_top(&mut self, byte: u8) {
+		if self.column_position >= VGA_COLUMNS {
+			self.new_line_top();
+		}
+		match byte {
+			b'\n' => self.new_line_top(),
+			byte => {
+				self.buffer.write(
+					ScreenChar {
+						ascii_character: byte,
+						color: self.color,
+					},
+					self.row_position,
+					self.column_position,
+				);
+
+				self.column_position += 1;
+			}
+		}
+	}
+
+	fn new_line_top(&mut self) {
+		self.column_position = 0;
+		if self.row_position < VGA_ROWS - 1 {
+			self.row_position += 1;
+		} else {
+			self.row_position = 0;
+		}
+		self.clear_row(self.row_position);
 	}
 
 	pub fn write_string(&mut self, s: &str) {
@@ -294,6 +341,10 @@ impl Writer {
 				);
 			}
 		}
+	}
+
+	pub fn set_mode(&mut self, mode: WriteMode) {
+		self.mode = mode;
 	}
 }
 
