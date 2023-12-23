@@ -200,7 +200,7 @@ pub fn init() {
 		PICS.lock().initialize();
 	}
 	enable();
-	println_serial!("Interrupts successfully initialized");
+	//println_serial!("Interrupts successfully initialized");
 }
 
 /// Enables interrupts on the CPU.

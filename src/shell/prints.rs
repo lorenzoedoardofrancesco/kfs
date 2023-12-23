@@ -45,12 +45,24 @@ pub fn print_welcome_message() {
 	prompt::init();
 }
 
+#[derive(Copy, Clone)]
+pub enum PrintStackMode {
+	Vga,
+	Serial,
+}
+
 /// Prints the current stack trace.
 ///
 /// Extracts and displays a hexadecimal dump of the current stack.
 /// Useful for debugging purposes.
-pub fn print_stack(line: &str) {
-	let args = &line["stack".len()..].trim();
+pub fn print_stack(line: &str, mode: PrintStackMode) {
+	let trimmed_line = match mode {
+		PrintStackMode::Vga => line["stack".len()..].trim(),
+		PrintStackMode::Serial => line["hexdump".len()..].trim(),
+	};
+
+	let args = &trimmed_line;
+
 	let mut parts = args.split_whitespace();
 
 	// Determine the address to use for the hex dump
@@ -71,7 +83,7 @@ pub fn print_stack(line: &str) {
 		.and_then(|arg| arg.parse::<usize>().ok())
 		.unwrap_or(256);
 
-	hexdump(address, num_bytes);
+	hexdump(address, num_bytes, mode);
 }
 
 /// Prints a formatted line in the help menu.
@@ -95,8 +107,8 @@ pub fn help() {
 	print_help_line("echo", "display a line of text");
 	print_help_line("clear", "clear the screen");
 	print_help_line("stack", "print the stack");
-	print_help_line("time", "print the time");
-	print_help_line("date", "display the current date and time");
+	print_help_line("hexdump", "print to the serial COM a hexdump of memory");
+	print_help_line("date | time", "display the current date or time");
 	print_help_line("miao", "print a cat");
 	print_help_line("uname", "print system information");
 	print_help_line("halt", "halt the system");

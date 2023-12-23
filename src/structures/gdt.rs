@@ -43,15 +43,15 @@ impl GdtEntry {
 	/// * `flags` - Additional flags (such as granularity).
 	/// * `name` - Descriptive name for the segment (used for debugging).
 	///
-	fn new(limit: u32, base: u32, access: u8, flags: u8, name: &str) -> GdtEntry {
-		println_serial!(
+	fn new(limit: u32, base: u32, access: u8, flags: u8, _name: &str) -> GdtEntry {
+		/*println_serial!(
 			"{:24}{:<#14x}{:<#10x}{:<#11x}{:<#x}",
-			name,
+			_name,
 			limit,
 			base,
 			access,
 			flags
-		);
+		);*/
 		GdtEntry {
 			limit_low: (limit & 0xffff) as u16,
 			base_low: (base & 0xffff) as u16,
@@ -129,7 +129,7 @@ unsafe fn load_segment_registers() {
 /// loads it into the CPU. It also updates the segment registers
 /// to use the new segments.
 pub fn init() {
-	println_serial!("Initializing GDT");
+	/*println_serial!("Initializing GDT");
 	println_serial!(
 		"{:24}{:<14}{:<10}{:<11}{:<}",
 		"",
@@ -137,10 +137,10 @@ pub fn init() {
 		"offset",
 		"access",
 		"flags"
-	);
+	);*/
 	unsafe {
 		load_gdt();
 		load_segment_registers();
 	}
-	println_serial!("\n\rGDT successfully loaded")
+	//println_serial!("\n\rGDT successfully loaded")
 }

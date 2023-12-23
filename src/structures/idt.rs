@@ -195,6 +195,6 @@ pub fn init() {
 
 		asm!("lidt [{}]", in(reg) &idt_register, options(readonly, nostack, preserves_flags));
 
-		println_serial!("IDT successfully loaded");
+		//println_serial!("IDT successfully loaded");
 	}
 }

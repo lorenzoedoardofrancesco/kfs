@@ -12,6 +12,7 @@ use crate::utils::io::{outb, outw};
 use crate::utils::librs::hlt;
 use crate::utils::librs::{get_rtc_date, get_rtc_time};
 use crate::vga::video_graphics_array::WRITER;
+use crate::shell::prints::PrintStackMode;
 
 pub const MAX_LINE_LENGTH: usize = 76;
 pub const MAX_HISTORY_LINES: usize = 16;
@@ -138,7 +139,9 @@ fn handle_special_commands(line: &str) {
 	if line.starts_with("echo") {
 		echo(line);
 	} else if line.starts_with("stack") {
-		print_stack(line);
+		print_stack(line, PrintStackMode::Vga);
+	} else if line.starts_with("hexdump") {
+		print_stack(line, PrintStackMode::Serial);
 	} else {
 		print_unknown_command(line);
 	}

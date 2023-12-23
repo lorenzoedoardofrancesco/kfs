@@ -4,6 +4,7 @@
 //! including string manipulation, reading real-time clock data from CMOS, and performing hex dumps.
 //! These functions are for handling shell input, displaying system time, and debugging.
 
+use crate::shell::prints::PrintStackMode;
 use crate::shell::{builtins::MAX_LINE_LENGTH, history::Line};
 use crate::utils::io::{inb, outb};
 use core::arch::asm;
@@ -79,48 +80,73 @@ pub fn hlt() {
 }
 
 /// Performs a hex dump starting from a given memory address.
-pub fn hexdump(mut address: u32, limit: usize) {
+pub fn hexdump(mut address: u32, limit: usize, mode: PrintStackMode) {
 	if limit <= 0 {
 		return;
 	}
 
-	println!("address: {:08x}, limit: {}", address, limit);
+	match mode {
+		PrintStackMode::Vga => println!("address: {:08x}, limit: {}", address, limit),
+		PrintStackMode::Serial => println_serial!("address: {:08x}, limit: {}", address, limit),
+	}
 
 	let bytes = unsafe { core::slice::from_raw_parts(address as *const u8, limit) };
 
 	for (i, &byte) in bytes.iter().enumerate() {
 		if i % 16 == 0 {
 			if i != 0 {
-				print_hex_line(address - 16, 16);
-				println!();
+				print_hex_line(address - 16, 16, mode);
+				match mode {
+					PrintStackMode::Vga => println!(""),
+					PrintStackMode::Serial => println_serial!(""),
+				}
 			}
-			print!("{:08x}: ", address);
+			match mode {
+				PrintStackMode::Vga => print!("{:08x}: ", address),
+				PrintStackMode::Serial => print_serial!("{:08x}: ", address),
+			}	
 		}
-		print!("{:02x} ", byte);
+		match mode {
+			PrintStackMode::Vga => print!("{:02x} ", byte),
+			PrintStackMode::Serial => print_serial!("{:02x} ", byte),
+		}
 		address += 1;
 	}
 
     let remaining = limit % 16;
     if remaining > 0 {
         for _ in 0..((16 - remaining) * 3) {
-            print!(" ");
+			match mode {
+				PrintStackMode::Vga => print!(" "),
+				PrintStackMode::Serial => print_serial!(" "),
+			}
         }
-        print_hex_line(address - remaining as u32, remaining);
+        print_hex_line(address - remaining as u32, remaining, mode);
     } else {
-        print_hex_line(address - 16, 16);
+        print_hex_line(address - 16, 16, mode);
     }
-    println!();
+
+	match mode {
+        PrintStackMode::Vga => println!(""),
+        PrintStackMode::Serial => println_serial!(""),
+    }
 }
 
 /// Helper function for printing a line in hex dump format.
-fn print_hex_line(address: u32, count: usize) {
+fn print_hex_line(address: u32, count: usize, mode: PrintStackMode) {
 	let bytes = unsafe { core::slice::from_raw_parts(address as *const u8, count) };
 
 	for &byte in bytes {
 		if byte <= 32 || byte >= 127 {
-			print!(".");
+			match mode {
+				PrintStackMode::Vga => print!("."),
+				PrintStackMode::Serial => print_serial!("."),
+			}
 		} else {
-			print!("{}", byte as char);
+			match mode {
+				PrintStackMode::Vga => print!("{}", byte as char),
+				PrintStackMode::Serial => print_serial!("{}", byte as char),
+			}
 		}
 	}
 }
