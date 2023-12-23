@@ -37,17 +37,6 @@ macro_rules! print_top {
 	($($arg:tt)*) => ($crate::macros::print_top(format_args!($($arg)*)));
 }
 
-/// Macro for printing formatted text for kernel debugging.
-///
-/// This macro is specifically designed for kernel-level debugging. It prints
-/// text using `printk`, which is typically configured to output to a debugging console.
-#[macro_export]
-macro_rules! printk {
-	($($arg:tt)*) => {
-		$crate::librs::printk(format_args!($($arg)*))
-	};
-}
-
 /// Macro for printing formatted text to the serial port.
 ///
 /// This macro uses the global `DEBUG` instance to output text to the configured serial port.

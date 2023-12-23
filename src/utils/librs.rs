@@ -100,12 +100,16 @@ pub fn hexdump(mut address: u32, limit: usize) {
 		address += 1;
 	}
 
-	let remaining = limit % 16;
-	for _ in 0..((16 - remaining) * 3) {
-		print!(" ");
-	}
-	print_hex_line(address - remaining as u32, remaining);
-	println!();
+    let remaining = limit % 16;
+    if remaining > 0 {
+        for _ in 0..((16 - remaining) * 3) {
+            print!(" ");
+        }
+        print_hex_line(address - remaining as u32, remaining);
+    } else {
+        print_hex_line(address - 16, 16);
+    }
+    println!();
 }
 
 /// Helper function for printing a line in hex dump format.
