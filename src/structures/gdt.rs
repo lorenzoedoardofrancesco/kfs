@@ -54,7 +54,7 @@ macro_rules! create_gdt_entry {
 	};
 }
 
-/// Lazy static initialization of the Global Descriptor Table (GDT).
+/// Static initialization of the Global Descriptor Table (GDT).
 ///
 /// This block sets up the GDT with predefined segments for kernel and user
 /// modes, including code, data, and stack segments.
@@ -118,12 +118,12 @@ pub struct GdtRegister {
 /// Loads the GDT.
 fn load_gdt() {
 	unsafe {
-		let gdtr = GdtRegister {
+		let gdt_register = GdtRegister {
 			size: (core::mem::size_of::<[GdtEntry; 7]>() - 1) as u16,
 			offset: GDT.as_ptr() as u32,
 		};
 
-		asm!("lgdt [{}]", in(reg) &gdtr, options(readonly, nostack, preserves_flags));
+		asm!("lgdt [{}]", in(reg) &gdt_register, options(readonly, nostack, preserves_flags));
 	}
 }
 

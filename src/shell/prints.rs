@@ -89,6 +89,19 @@ pub fn print_stack(line: &str, mode: PrintStackMode) {
 			}
 			offset
 		}
+		Some("idt") => {
+			let mut idtr: [u8; 6] = [0; 6];
+			let offset: u32;
+			unsafe {
+				core::arch::asm!(
+					"sidt [{}]",
+					in(reg) &mut idtr,
+					options(nostack, preserves_flags)
+				);
+				offset = ptr::read_unaligned(idtr.as_ptr().add(2) as *const u32);
+			}
+			offset
+		}
 		Some(addr_str) => u32::from_str_radix(addr_str, 16).unwrap_or(0),
 		None => 0,
 	};

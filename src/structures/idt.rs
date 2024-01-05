@@ -23,7 +23,6 @@ use crate::exceptions::interrupts::{
 	simd_floating_point_exception, stack_fault, timer_interrupt, virtualization_exception,
 };
 use core::arch::asm;
-use lazy_static::lazy_static;
 
 /// Represents an Interrupt Descriptor Table (IDT) entry.
 ///
@@ -39,24 +38,24 @@ struct IdtDescriptor {
 	offset_high: u16,
 }
 
-impl IdtDescriptor {
-	/// Creates a new IDT entry.
-	///
-	/// # Arguments
-	///
-	/// * `offset` - The address of the interrupt service routine.
-	/// * `selector` - The code segment selector.
-	/// * `type_attributes` - Type and attributes of the interrupt gate.
-	///
-	fn new(offset: u32, selector: u16, type_attributes: u8) -> IdtDescriptor {
+/// Creates a new IDT entry.
+///
+/// # Arguments
+///
+/// * `offset` - The address of the interrupt service routine.
+/// * `selector` - The code segment selector.
+/// * `type_attributes` - Type and attributes of the interrupt gate.
+///
+macro_rules! create_idt_entry {
+	($offset:expr, $selector:expr, $type_attributes:expr) => {
 		IdtDescriptor {
-			offset_low: (offset & 0xffff) as u16,
-			selector: selector,
+			offset_low: ($offset & 0xffff) as u16,
+			selector: $selector,
 			reserved: 0,
-			type_attributes,
-			offset_high: ((offset >> 16) & 0xffff) as u16,
+			type_attributes: $type_attributes,
+			offset_high: (($offset >> 16) & 0xffff) as u16,
 		}
-	}
+	};
 }
 
 // Static declarations for interrupt handlers.
@@ -131,40 +130,14 @@ static TIMER_INTERRUPT: extern "C" fn() = handler!(timer_interrupt);
 /// Handler for the 'Keyboard Interrupt'.
 static KEYBOARD_INTERRUPT: extern "C" fn() = handler!(keyboard_interrupt);
 
-lazy_static! {
-	/// Lazy static initialization of the Interrupt Descriptor Table (IDT).
-	///
-	/// This block sets up the IDT with predefined entries for standard interrupts
-	#[link_section = ".idt"]
-	static ref IDT: [IdtDescriptor; 256] = {
-		let mut idt = [IdtDescriptor::new(0, 0, 0); 256];
-
-		idt[0] = IdtDescriptor::new(DIVIDE_BY_ZERO as u32, 0x08, 0x8e);
-		idt[1] = IdtDescriptor::new(DEBUGG as u32, 0x08, 0x8e);
-		idt[2] = IdtDescriptor::new(NON_MASKABLE_INTERRUPT as u32, 0x08, 0x8e);
-		idt[3] = IdtDescriptor::new(BREAKPOINT as u32, 0x08, 0x8e);
-		idt[4] = IdtDescriptor::new(OVERFLOW as u32, 0x08, 0x8e);
-		idt[5] = IdtDescriptor::new(BOUND_RANGE_EXCEEDED as u32, 0x08, 0x8e);
-		idt[6] = IdtDescriptor::new(INVALID_OPCODE as u32, 0x08, 0x8e);
-		idt[7] = IdtDescriptor::new(COPROCESSOR_NOT_AVAILABLE as u32, 0x08, 0x8e);
-		idt[8] = IdtDescriptor::new(DOUBLE_FAULT as u32, 0x08, 0x8e);
-		idt[9] = IdtDescriptor::new(COPROCESSOR_SEGMENT_OVERRUN as u32, 0x08, 0x8e);
-		idt[10] = IdtDescriptor::new(INVALID_TASK_STATE_SEGMENT as u32, 0x08, 0x8e);
-		idt[11] = IdtDescriptor::new(SEGMENT_NOT_PRESENT as u32, 0x08, 0x8e);
-		idt[12] = IdtDescriptor::new(STACK_FAULT as u32, 0x08, 0x8e);
-		idt[13] = IdtDescriptor::new(GENERAL_PROTECTION_FAULT as u32, 0x08, 0x8e);
-		idt[14] = IdtDescriptor::new(PAGE_FAULT as u32, 0x08, 0x8e);
-		idt[15] = IdtDescriptor::new(RESERVED as u32, 0x08, 0x8e);
-		idt[16] = IdtDescriptor::new(MATH_FAULT as u32, 0x08, 0x8e);
-		idt[17] = IdtDescriptor::new(ALIGNMENT_CHECK as u32, 0x08, 0x8e);
-		idt[18] = IdtDescriptor::new(MACHINE_CHECK as u32, 0x08, 0x8e);
-		idt[19] = IdtDescriptor::new(SIMD_FLOATING_POINT_EXCEPTION as u32, 0x08, 0x8e);
-		idt[20] = IdtDescriptor::new(VIRTUALIZATION_EXCEPTION as u32, 0x08, 0x8e);
-		idt[InterruptIndex::Timer.as_usize()] = IdtDescriptor::new(TIMER_INTERRUPT as u32, 0x08, 0x8e);
-		idt[InterruptIndex::Keyboard.as_usize()] = IdtDescriptor::new(KEYBOARD_INTERRUPT as u32, 0x08, 0x8e);
-		idt
-	};
-}
+/// Static initialization of the Interrupt Descriptor Table (IDT).
+///
+/// This block sets up the IDT with predefined entries for standard interrupts
+#[link_section = ".idt"]
+static mut IDT: [IdtDescriptor; 256] = {
+	let idt = [create_idt_entry!(0, 0, 0); 256];
+	idt
+};
 
 /// Represents the register structure used for loading the IDT.
 ///
@@ -174,6 +147,33 @@ lazy_static! {
 struct IdtRegister {
 	size: u16,
 	offset: u32,
+}
+
+unsafe fn fill_idt() {
+	IDT[0] = create_idt_entry!(DIVIDE_BY_ZERO as u32, 0x08, 0x8e);
+	IDT[1] = create_idt_entry!(DEBUGG as u32, 0x08, 0x8e);
+	IDT[2] = create_idt_entry!(NON_MASKABLE_INTERRUPT as u32, 0x08, 0x8e);
+	IDT[3] = create_idt_entry!(BREAKPOINT as u32, 0x08, 0x8e);
+	IDT[4] = create_idt_entry!(OVERFLOW as u32, 0x08, 0x8e);
+	IDT[5] = create_idt_entry!(BOUND_RANGE_EXCEEDED as u32, 0x08, 0x8e);
+	IDT[6] = create_idt_entry!(INVALID_OPCODE as u32, 0x08, 0x8e);
+	IDT[7] = create_idt_entry!(COPROCESSOR_NOT_AVAILABLE as u32, 0x08, 0x8e);
+	IDT[8] = create_idt_entry!(DOUBLE_FAULT as u32, 0x08, 0x8e);
+	IDT[9] = create_idt_entry!(COPROCESSOR_SEGMENT_OVERRUN as u32, 0x08, 0x8e);
+	IDT[10] = create_idt_entry!(INVALID_TASK_STATE_SEGMENT as u32, 0x08, 0x8e);
+	IDT[11] = create_idt_entry!(SEGMENT_NOT_PRESENT as u32, 0x08, 0x8e);
+	IDT[12] = create_idt_entry!(STACK_FAULT as u32, 0x08, 0x8e);
+	IDT[13] = create_idt_entry!(GENERAL_PROTECTION_FAULT as u32, 0x08, 0x8e);
+	IDT[14] = create_idt_entry!(PAGE_FAULT as u32, 0x08, 0x8e);
+	IDT[15] = create_idt_entry!(RESERVED as u32, 0x08, 0x8e);
+	IDT[16] = create_idt_entry!(MATH_FAULT as u32, 0x08, 0x8e);
+	IDT[17] = create_idt_entry!(ALIGNMENT_CHECK as u32, 0x08, 0x8e);
+	IDT[18] = create_idt_entry!(MACHINE_CHECK as u32, 0x08, 0x8e);
+	IDT[19] = create_idt_entry!(SIMD_FLOATING_POINT_EXCEPTION as u32, 0x08, 0x8e);
+	IDT[20] = create_idt_entry!(VIRTUALIZATION_EXCEPTION as u32, 0x08, 0x8e);
+	IDT[InterruptIndex::Timer.as_usize()] = create_idt_entry!(TIMER_INTERRUPT as u32, 0x08, 0x8e);
+	IDT[InterruptIndex::Keyboard.as_usize()] =
+		create_idt_entry!(KEYBOARD_INTERRUPT as u32, 0x08, 0x8e);
 }
 
 /// Initializes and loads the Interrupt Descriptor Table (IDT).
@@ -188,6 +188,8 @@ struct IdtRegister {
 /// that manipulate CPU state.
 pub fn init() {
 	unsafe {
+		fill_idt();
+
 		let idt_register = IdtRegister {
 			size: (core::mem::size_of::<[IdtDescriptor; 256]>() - 1) as u16,
 			offset: IDT.as_ptr() as u32,
@@ -195,6 +197,6 @@ pub fn init() {
 
 		asm!("lidt [{}]", in(reg) &idt_register, options(readonly, nostack, preserves_flags));
 
-		//println_serial!("IDT successfully loaded");
+		println_serial!("IDT successfully loaded");
 	}
 }
