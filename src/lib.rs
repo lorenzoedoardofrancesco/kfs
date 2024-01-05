@@ -100,3 +100,5 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	memory::pmm::physical_memory_manager_init();
 //	shell::print_welcome_message();
 }
+
+// Comment
