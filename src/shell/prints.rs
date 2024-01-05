@@ -56,6 +56,8 @@ pub enum PrintStackMode {
 /// Extracts and displays a hexadecimal dump of the current stack.
 /// Useful for debugging purposes.
 pub fn print_stack(line: &str, mode: PrintStackMode) {
+	use core::ptr;
+
 	let trimmed_line = match mode {
 		PrintStackMode::Vga => line["stack".len()..].trim(),
 		PrintStackMode::Serial => line["hexdump".len()..].trim(),
@@ -73,6 +75,19 @@ pub fn print_stack(line: &str, mode: PrintStackMode) {
 				core::arch::asm!("mov {}, esp", out(reg) esp);
 			}
 			esp
+		}
+		Some("gdt") => {
+			let mut gdtr: [u8; 6] = [0; 6];
+			let offset: u32;
+			unsafe {
+				core::arch::asm!(
+					"sgdt [{}]",
+					in(reg) &mut gdtr,
+					options(nostack, preserves_flags)
+				);
+				offset = ptr::read_unaligned(gdtr.as_ptr().add(2) as *const u32);
+			}
+			offset
 		}
 		Some(addr_str) => u32::from_str_radix(addr_str, 16).unwrap_or(0),
 		None => 0,
