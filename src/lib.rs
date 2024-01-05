@@ -39,9 +39,8 @@
 //! the handling of interrupts.
 //!
 //! ## MIT License
-//! 
+//!
 //! Copyright Keystroke-Fusion-Surgery (c) 2023 Lsimanic-Amuller 42
-
 
 #![no_std]
 #![no_main]
@@ -50,6 +49,7 @@
 mod macros;
 mod boot;
 mod exceptions;
+mod memory;
 mod shell;
 mod structures;
 mod utils;
@@ -104,5 +104,7 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	idt::init();
 	interrupts::init();
 	debug::init_serial_port();
+	multiboot::read_multiboot_info(multiboot_addr);
+	memory::pmm::physical_memory_manager_init();
 	prints::print_welcome_message();
 }
