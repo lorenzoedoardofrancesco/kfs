@@ -12,6 +12,7 @@ pub const PAGE_SIZE: usize = 4096;
 pub const ENTRY_COUNT: usize = 1024;
 
 // Constants for memory addresses reserved for paging structures
+/// TODO: Make these constants dynamic and in the kernel space (heap???)
 const PAGE_DIRECTORY_ADDR: usize = 0x0c000000;
 const PAGE_TABLES_ADDR: usize = 0x0d000000;
 

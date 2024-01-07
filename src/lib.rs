@@ -107,5 +107,7 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	multiboot::read_multiboot_info(multiboot_addr);
 	memory::physical_memory_managment::physical_memory_manager_init();
 	memory::memory_space::init_pages();
+	use crate::memory::physical_memory_managment::PMM;
+	PMM.lock().print_memory_map();
 	prints::print_welcome_message();
 }

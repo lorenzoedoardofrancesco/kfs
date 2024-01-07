@@ -223,7 +223,7 @@ impl PhysicalMemoryManager {
 			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x1000000;
 			USER_SPACE_START = KERNEL_SPACE_END;
 			USER_SPACE_END = self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
-			
+
 			println_serial!("Kernel space start: {:#x}", KERNEL_SPACE_START);
 			println_serial!("Kernel space end: {:#x}", KERNEL_SPACE_END);
 			println_serial!("User space start: {:#x}", USER_SPACE_START);
@@ -244,7 +244,7 @@ impl PhysicalMemoryManager {
 		false
 	}
 
-	fn print_memory_map(&self) {
+	pub fn print_memory_map(&self) {
 		println_serial!("Memory Map:");
 		for index in 0..(self.memory_map_size as usize) {
 			let block = self.memory_map[index]; // Access the block directly using index
