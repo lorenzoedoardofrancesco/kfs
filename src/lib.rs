@@ -106,5 +106,7 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	debug::init_serial_port();
 	multiboot::read_multiboot_info(multiboot_addr);
 	memory::physical_memory_managment::physical_memory_manager_init();
+	memory::page_directory::init_pages();
+	memory::page_directory::enable_paging();
 	prints::print_welcome_message();
 }

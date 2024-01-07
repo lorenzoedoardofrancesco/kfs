@@ -249,5 +249,5 @@ pub fn physical_memory_manager_init() {
 
 	pmm.process_memory_map();
 	pmm.init();
-	pmm.print_memory_map();
+	//pmm.print_memory_map();
 }
