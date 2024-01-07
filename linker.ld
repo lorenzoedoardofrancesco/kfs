@@ -12,6 +12,7 @@ SECTIONS {
 	}
 
 	. = 1M;
+	_kernel_start = .;
 
 	.multiboot_header ALIGN(8) : {
 		KEEP(*(.multiboot_header))

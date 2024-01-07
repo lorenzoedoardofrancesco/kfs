@@ -7,6 +7,11 @@ const PMMNGR_BLOCK_SIZE: u32 = 4096; // 4KiB
 const PMMNGR_BLOCKS_PER_BYTE: u32 = 8;
 const USED_BLOCK: u32 = 0xffffffff;
 
+pub static mut KERNEL_SPACE_START: u32 = 0;
+pub static mut KERNEL_SPACE_END: u32 = 0;
+pub static mut USER_SPACE_START: u32 = 0;
+pub static mut USER_SPACE_END: u32 = 0;
+
 #[derive(Clone, Copy)]
 pub struct MemoryRegion {
 	pub start_address: usize,
@@ -46,6 +51,10 @@ lazy_static! {
 
 extern "C" {
 	static mut _kernel_end: u8;
+}
+
+extern "C" {
+	static mut _kernel_start: u8;
 }
 
 impl PhysicalMemoryManager {
@@ -186,7 +195,7 @@ impl PhysicalMemoryManager {
 	}
 
 	fn process_memory_map(&mut self) {
-		let memory_map_entries = self.memory_map_entries.unwrap();
+		let memory_map_entries: &[MultibootMemoryMapEntry] = self.memory_map_entries.unwrap();
 
 		let mut i = 0;
 		println_serial!("Memory map entry: ");
@@ -208,6 +217,20 @@ impl PhysicalMemoryManager {
 
 		self.memory_size = memory_map_entries.last().unwrap().address as u32
 			+ memory_map_entries.last().unwrap().len as u32;
+
+		unsafe {
+			KERNEL_SPACE_START = &_kernel_start as *const u8 as u32;
+			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x1000000;
+			USER_SPACE_START = KERNEL_SPACE_END;
+			USER_SPACE_END = self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
+			
+			println_serial!("Kernel space start: {:#x}", KERNEL_SPACE_START);
+			println_serial!("Kernel space end: {:#x}", KERNEL_SPACE_END);
+			println_serial!("User space start: {:#x}", USER_SPACE_START);
+			println_serial!("User space end: {:#x}", USER_SPACE_END);
+		}
+
+
 	}
 
 	fn is_address_usable(&self, address: u32) -> bool {
