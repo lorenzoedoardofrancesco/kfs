@@ -13,7 +13,7 @@
 //! is used by the kernel to determine the available memory and to locate
 //! the initial ramdisk. The header is also used by the bootloader to
 //! determine the entry point of the kernel.
-use crate::memory::pmm::PMM;
+use crate::memory::physical_memory_managment::PMM;
 
 const MULTIBOOT_HEADER_MAGIC: u32 = 0xe85250d6;
 const MULTIBOOT_HEADER_ARCHITECTURE: u32 = 0;

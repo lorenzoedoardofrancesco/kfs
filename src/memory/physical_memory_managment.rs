@@ -140,7 +140,7 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	fn alloc_block(&mut self) -> Result<u32, &'static str> {
+	pub fn allocate_frame(&mut self) -> Result<u32, &'static str> {
 		if self.used_blocks >= self.max_blocks {
 			return Err("Out of memory");
 		}
@@ -155,8 +155,9 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	fn free_block(&mut self, address: u32) {
+	pub fn free_frame(&mut self, address: Result<u32, &'static str>) {
 		// mettre un Result parce que si l'adresse est pas utilisable on fait quoi ?
+		let address = address.unwrap();
 		if self.is_address_usable(address) {
 			self.mmap_unset(address / PMMNGR_BLOCK_SIZE);
 		}
@@ -186,7 +187,6 @@ impl PhysicalMemoryManager {
 
 	fn process_memory_map(&mut self) {
 		let memory_map_entries = self.memory_map_entries.unwrap();
-		let mut largest_region = (0, 0);
 
 		let mut i = 0;
 		println_serial!("Memory map entry: ");
@@ -220,11 +220,34 @@ impl PhysicalMemoryManager {
 		}
 		false
 	}
+
+	fn print_memory_map(&self) {
+		println_serial!("Memory Map:");
+		for index in 0..(self.memory_map_size as usize) {
+			let block = self.memory_map[index]; // Access the block directly using index
+
+			let mut bits: [char; 32] = ['0'; 32];
+
+			for j in 0..32 {
+				if block & (1 << j) != 0 {
+					bits[31 - j] = '1';
+				}
+			}
+
+			// Printing each block's address and its bit pattern directly
+			print_serial!("0x{:08x}: ", index * 32 * PMMNGR_BLOCK_SIZE as usize);
+			for bit in bits.iter() {
+				print_serial!("{}", bit);
+			}
+			println_serial!();
+		}
+	}
 }
 
 pub fn physical_memory_manager_init() {
 	let mut pmm = PMM.lock();
 
 	pmm.process_memory_map();
-	pmm.init()
+	pmm.init();
+	pmm.print_memory_map();
 }
