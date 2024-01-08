@@ -20,8 +20,10 @@ use crate::exceptions::interrupts::{
 	coprocessor_segment_overrun, debug, divide_by_zero, double_fault, general_protection_fault,
 	invalid_opcode, invalid_task_state_segment, keyboard_interrupt, machine_check, math_fault,
 	non_maskable_interrupt, overflow, page_fault, reserved, segment_not_present,
-	simd_floating_point_exception, stack_fault, timer_interrupt, virtualization_exception,
+	simd_floating_point_exception, stack_fault, syscall_interrupt, timer_interrupt,
+	virtualization_exception,
 };
+use crate::utils::debug::LogLevel;
 use core::arch::asm;
 
 /// Represents an Interrupt Descriptor Table (IDT) entry.
@@ -30,7 +32,7 @@ use core::arch::asm;
 /// to various interrupt and exception conditions.
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
-struct IdtDescriptor {
+pub struct IdtDescriptor {
 	offset_low: u16,
 	selector: u16,
 	reserved: u8,
@@ -130,11 +132,14 @@ static TIMER_INTERRUPT: extern "C" fn() = handler!(timer_interrupt);
 /// Handler for the 'Keyboard Interrupt'.
 static KEYBOARD_INTERRUPT: extern "C" fn() = handler!(keyboard_interrupt);
 
+/// Handler for the 'Syscall'.
+static SYSCALL: extern "C" fn() = handler!(syscall_interrupt);
+
 /// Static initialization of the Interrupt Descriptor Table (IDT).
 ///
 /// This block sets up the IDT with predefined entries for standard interrupts
 #[link_section = ".idt"]
-static mut IDT: [IdtDescriptor; 256] = {
+pub static mut IDT: [IdtDescriptor; 256] = {
 	let idt = [create_idt_entry!(0, 0, 0); 256];
 	idt
 };
@@ -174,6 +179,7 @@ unsafe fn fill_idt() {
 	IDT[InterruptIndex::Timer.as_usize()] = create_idt_entry!(TIMER_INTERRUPT as u32, 0x08, 0x8e);
 	IDT[InterruptIndex::Keyboard.as_usize()] =
 		create_idt_entry!(KEYBOARD_INTERRUPT as u32, 0x08, 0x8e);
+	IDT[0x80] = create_idt_entry!(SYSCALL as u32, 0x08, 0xee);
 }
 
 /// Initializes and loads the Interrupt Descriptor Table (IDT).
@@ -197,6 +203,10 @@ pub fn init() {
 
 		asm!("lidt [{}]", in(reg) &idt_register, options(readonly, nostack, preserves_flags));
 
-		println_serial!("IDT successfully loaded");
+		log!(
+			LogLevel::Info,
+			"IDT successfully loaded at 0x{:08x}",
+			&IDT as *const _ as u32
+		);
 	}
 }

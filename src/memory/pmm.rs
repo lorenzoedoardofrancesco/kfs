@@ -189,13 +189,21 @@ impl PhysicalMemoryManager {
 		let mut largest_region = (0, 0);
 
 		let mut i = 0;
-		println_serial!("Memory map entry: ");
+		println_serial!("      Memory map entry: ");
 		for entry in memory_map_entries {
 			println_serial!(
-				"Address: {:#x} | Length: {:#x} | Type: {:#x} | ",
+				"      Address: 0x{:08x} | Length: 0x{:07x} | Type: {:#x} ({})",
 				entry.address,
 				entry.len,
-				entry.entry_type
+				entry.entry_type,
+				match entry.entry_type {
+					1 => "Usable",
+					2 => "Reserved",
+					3 => "ACPI Reclaimable",
+					4 => "ACPI NVS",
+					5 => "Bad memory",
+					_ => "Unknown",
+				}
 			);
 			if entry.entry_type == 1 {
 				self.usable_regions[i] = MemoryRegion {

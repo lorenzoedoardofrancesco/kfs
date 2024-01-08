@@ -13,7 +13,7 @@
 //! is used by the kernel to determine the available memory and to locate
 //! the initial ramdisk. The header is also used by the bootloader to
 //! determine the entry point of the kernel.
-use crate::memory::pmm::PMM;
+use crate::{memory::pmm::PMM, utils::debug::LogLevel};
 
 const MULTIBOOT_HEADER_MAGIC: u32 = 0xe85250d6;
 const MULTIBOOT_HEADER_ARCHITECTURE: u32 = 0;
@@ -145,17 +145,21 @@ pub fn validate_multiboot(magic: u32, address: u32) {
 	if address & 0x7 != 0 {
 		panic!("Unaligned multiboot address: {:#x}", address);
 	}
+
+	log!(LogLevel::Info, "Multiboot header successfully validated");
 }
 
 pub fn read_multiboot_info(address: u32) {
 	let multiboot_info: &MultibootInfo = unsafe { &*(address as *const MultibootInfo) };
-	println_serial!("Announced mbi size: {:#x}", multiboot_info.total_size);
+	println_serial!(
+		"\nGRUB: Announced MBI size: {:#x}",
+		multiboot_info.total_size
+	);
 
 	let mut current_tag: *const MultibootTag = multiboot_info.tags.as_ptr();
 	let mut tag: &MultibootTag = unsafe { &*current_tag };
 
 	let mut meminfo: Option<&MultibootTagBasicMemInfo> = None;
-	let mut mmap: Option<&MultibootMemoryMapTag> = None;
 	let mut pmm = PMM.lock();
 
 	while tag.tag_type != MULTIBOOT_TAG_TYPE_END {
@@ -163,16 +167,21 @@ pub fn read_multiboot_info(address: u32) {
 		match tag.tag_type {
 			MULTIBOOT_TAG_TYPE_CMDLINE => {
 				let cmdline = unsafe { &*(current_tag as *const MultibootTagString) };
-				println_serial!("Command line: {}", u8_to_str(&cmdline.string));
+				if cmdline.string != 0 {
+					println_serial!("      Command line: {}", u8_to_str(&cmdline.string));
+				}
 			}
 			MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME => {
 				let bootloader_name = unsafe { &*(current_tag as *const MultibootTagString) };
-				println_serial!("Bootloader name: {}", u8_to_str(&bootloader_name.string));
+				println_serial!(
+					"      Bootloader name: {}",
+					u8_to_str(&bootloader_name.string)
+				);
 			}
 			MULTIBOOT_TAG_TYPE_BASIC_MEMINFO => {
 				meminfo = Some(unsafe { &*(current_tag as *const MultibootTagBasicMemInfo) });
 				println_serial!(
-					"Mem lower: {}KB, Mem upper: {}KB",
+					"      Mem lower: {}KB, Mem upper: {}KB",
 					meminfo.unwrap().mem_lower,
 					meminfo.unwrap().mem_upper
 				);
@@ -180,7 +189,7 @@ pub fn read_multiboot_info(address: u32) {
 			MULTIBOOT_TAG_TYPE_BOOTDEV => {
 				let bootdev = unsafe { &*(current_tag as *const MultibootTagBootDev) };
 				println_serial!(
-					"Boot device: {:#x}, {}, {}",
+					"      Boot device: {:#x}, {}, {}",
 					bootdev.biosdev,
 					bootdev.partition,
 					bootdev.sub_partition

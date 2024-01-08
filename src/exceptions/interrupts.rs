@@ -6,6 +6,7 @@
 //! response to hardware and software interrupts.
 use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
 use crate::exceptions::pic8259::ChainedPics;
+use crate::utils::debug::LogLevel;
 use crate::utils::io::inb;
 use core::sync::atomic::{AtomicU32, Ordering};
 use spin::Mutex;
@@ -66,6 +67,13 @@ pub struct InterruptStackFrame {
 	cpu_flags: u32,
 	stack_pointer: u32,
 	stack_segment: u32,
+	eax: u32,
+	ebx: u32,
+	ecx: u32,
+	edx: u32,
+	esi: u32,
+	edi: u32,
+	ebp: u32,
 }
 
 /// Handler functions for various interrupts.
@@ -192,6 +200,24 @@ pub fn keyboard_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	}
 }
 
+pub fn syscall_interrupt(_stack_frame: &mut InterruptStackFrame) {
+	use crate::exceptions::syscalls::{syscall, GeneralRegs};
+
+	let mut registers = GeneralRegs {
+		eax: _stack_frame.eax,
+		ebx: _stack_frame.ebx,
+		ecx: _stack_frame.ecx,
+		edx: _stack_frame.edx,
+		esi: _stack_frame.esi,
+		edi: _stack_frame.edi,
+		ebp: _stack_frame.ebp,
+	};
+
+	syscall(&mut registers);
+
+	_stack_frame.eax = registers.eax;
+}
+
 /// Initializes the interrupt handlers.
 ///
 /// This function sets up the PICs and enables interrupts in the system.
@@ -199,8 +225,14 @@ pub fn init() {
 	unsafe {
 		PICS.lock().initialize();
 	}
+	log!(
+		LogLevel::Info,
+		"PIC successfully initialized (Master: {:#x}, Slave: {:#x})",
+		PIC_1_OFFSET,
+		PIC_1_OFFSET + 8
+	);
 	enable();
-	//println_serial!("Interrupts successfully initialized");
+	log!(LogLevel::Info, "Interrupts successfully enabled");
 }
 
 /// Enables interrupts on the CPU.
