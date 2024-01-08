@@ -42,5 +42,7 @@ pub fn init_pages() {
             );
         }
     }
+
+    enable_paging();
 }
 

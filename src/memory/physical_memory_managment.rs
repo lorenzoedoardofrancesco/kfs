@@ -50,11 +50,8 @@ lazy_static! {
 }
 
 extern "C" {
-	static mut _kernel_end: u8;
-}
-
-extern "C" {
 	static mut _kernel_start: u8;
+	static mut _kernel_end: u8;
 }
 
 impl PhysicalMemoryManager {
@@ -228,7 +225,7 @@ impl PhysicalMemoryManager {
 
 		unsafe {
 			KERNEL_SPACE_START = &_kernel_start as *const u8 as u32;
-			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x1000000;
+			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x100000;
 			USER_SPACE_START = KERNEL_SPACE_END;
 			USER_SPACE_END = self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
 

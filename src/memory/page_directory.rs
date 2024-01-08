@@ -13,8 +13,9 @@ pub const ENTRY_COUNT: usize = 1024;
 
 // Constants for memory addresses reserved for paging structures
 /// TODO: Make these constants dynamic and in the kernel space (heap???)
-const PAGE_DIRECTORY_ADDR: usize = 0x0c000000;
-const PAGE_TABLES_ADDR: usize = 0x0d000000;
+
+const PAGE_DIRECTORY_ADDR: usize = 0x160000;
+const PAGE_TABLES_ADDR: usize = 0x161000;
 
 use core::sync::atomic::{AtomicPtr, Ordering};
 
@@ -140,29 +141,30 @@ pub fn enable_paging() {
 	}
 }
 
-// pub fn init_pages() {
-// 	unsafe {
-// 		// Convert raw pointers to mutable references
-// 		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
-// 		let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
+pub fn init_pages() {
+	unsafe {
+		// Convert raw pointers to mutable references
+		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
+		let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
 
-// 		for (i, table) in tables.iter_mut().enumerate() {
-// 			// Calculate the physical address of this table's entries outside the inner loop
-// 			let table_phys_addr = table.entries.as_ptr() as u32;
+		for (i, table) in tables.iter_mut().enumerate() {
+			// Calculate the physical address of this table's entries outside the inner loop
+			let table_phys_addr = table.entries.as_ptr() as u32;
 
-// 			for (j, entry) in table.entries.iter_mut().enumerate() {
-// 				let virt = (i << 22) | (j << 12);
-// 				let phys = virt as u32;
-// 				entry.set_frame(phys);
-// 				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-// 			}
+			for (j, entry) in table.entries.iter_mut().enumerate() {
+				let virt = (i << 22) | (j << 12);
+				let phys = virt as u32;
+				entry.set_frame(phys);
+				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+			}
 
-// 			// Now use the previously calculated physical address
-// 			directory.add_entry(
-// 				i,
-// 				table_phys_addr,
-// 				PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
-// 			);
-// 		}
-// 	}
-// }
+			// Now use the previously calculated physical address
+			directory.add_entry(
+				i,
+				table_phys_addr,
+				PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
+			);
+		}
+	}
+	enable_paging();
+}
