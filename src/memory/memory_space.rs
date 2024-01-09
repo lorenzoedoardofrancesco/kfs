@@ -7,8 +7,6 @@ use core::sync::atomic::{AtomicPtr, Ordering};
 
 
 pub fn init_pages() {
-
-
     unsafe {
         let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
         let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);

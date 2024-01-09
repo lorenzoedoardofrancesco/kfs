@@ -169,6 +169,35 @@ impl PhysicalMemoryManager {
 		}
 	}
 
+	pub fn allocate_multiple_frames(&mut self, pages: u32) -> Result<u32, &'static str> {
+		if self.used_blocks + pages >= self.max_blocks {
+			return Err("Out of memory");
+		}
+
+		let mut frame = 0;
+		let mut count = 0;
+		for i in 0..self.max_blocks {
+			if !self.mmap_test(i) {
+				count += 1;
+				if count == pages {
+					frame = i - pages + 1;
+					break;
+				}
+			} else {
+				count = 0;
+			}
+		}
+
+		if frame != 0 {
+			for i in frame..frame + pages {
+				self.mmap_set(i);
+			}
+			Ok(frame * PMMNGR_BLOCK_SIZE)
+		} else {
+			Err("Out of memory")
+		}
+	}
+
 	fn init_available_memory(&mut self, mmap: &MultibootMemoryMapTag) {
 		for i in 0..(mmap.size - mmap.entry_size) / mmap.entry_size {
 			let entry: &MultibootMemoryMapEntry =
