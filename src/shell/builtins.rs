@@ -254,7 +254,7 @@ fn test_syscall(line: &str) {
 		}
 	}
 
-	if part_index < 5 {
+	if part_index < 3 {
 		println!("Usage: test_syscall <syscall_number> <arg1> <arg2> <arg3>");
 		return;
 	}

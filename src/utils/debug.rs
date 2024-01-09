@@ -14,6 +14,7 @@ const SERIAL_PORT: u16 = 0x3f8;
 
 #[allow(dead_code)]
 pub enum LogLevel {
+	Panic,
 	Emergency,
 	Alert,
 	Critical,
@@ -27,6 +28,7 @@ pub enum LogLevel {
 impl LogLevel {
 	pub fn as_str(self) -> &'static str {
 		match self {
+			LogLevel::Panic => "PANIC",
 			LogLevel::Emergency => "EMERGENCY",
 			LogLevel::Alert => "ALERT",
 			LogLevel::Critical => "CRITICAL",

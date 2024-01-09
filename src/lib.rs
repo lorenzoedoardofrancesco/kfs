@@ -57,7 +57,7 @@ mod vga;
 
 use boot::multiboot;
 use core::panic::PanicInfo;
-use exceptions::{interrupts, keyboard::process_keyboard_input};
+use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
 use shell::prints;
 use structures::{gdt, idt};
 use utils::{debug, librs::hlt};
@@ -75,6 +75,7 @@ use vga::parrot::animate_parrot;
 #[no_mangle]
 pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	init(multiboot_magic, multiboot_addr);
+	unsafe { core::arch::asm!("mov dx, 0; div dx") };
 	loop {
 		process_keyboard_input();
 		animate_parrot();
@@ -88,10 +89,7 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 /// It prints the panic information and halts the system.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-	println!("{}", info);
-	loop {
-		hlt();
-	}
+	handle_panic(info, None);
 }
 
 /// Initializes the kernel components.

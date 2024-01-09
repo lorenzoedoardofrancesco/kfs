@@ -11,6 +11,8 @@ use crate::utils::io::inb;
 use core::sync::atomic::{AtomicU32, Ordering};
 use spin::Mutex;
 
+use super::panic::handle_panic;
+
 pub static TICKS: AtomicU32 = AtomicU32::new(0);
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -83,101 +85,118 @@ pub struct InterruptStackFrame {
 ///
 /// The functions print a message and the state of the stack frame at the time
 /// of the interrupt. Not yet implemented.
-pub extern "C" fn divide_by_zero(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: DIVIDE BY ZERO\n{:#x?}", _stack_frame);
+
+pub extern "C" fn divide_by_zero(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Divide By Zero", Some(stack_frame));
 }
 
-pub extern "C" fn debug(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: DEBUG\n{:#x?}", _stack_frame);
+pub extern "C" fn debug(stack_frame: &mut InterruptStackFrame) {
+	log!(LogLevel::Info, "EXCEPTION: DEBUG\n{:#?}", stack_frame);
 }
 
-pub extern "C" fn non_maskable_interrupt(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: NON MASKABLE INTERRUPT\n{:#x?}", _stack_frame);
-}
-
-pub extern "C" fn breakpoint(_stack_frame: &mut InterruptStackFrame) {
-	let stack_frame = &mut *_stack_frame;
-	println!(
-		"EXCEPTION: BREAKPOINT at {:#x}\n{:#x?}",
-		stack_frame.instruction_pointer, stack_frame
+pub extern "C" fn non_maskable_interrupt(stack_frame: &mut InterruptStackFrame) {
+	log!(
+		LogLevel::Info,
+		"EXCEPTION: NON MASKABLE INTERRUPT\n{:#?}",
+		stack_frame
 	);
 }
 
-pub fn overflow(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: OVERFLOW\n{:#x?}", _stack_frame);
-}
-
-pub fn bound_range_exceeded(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: BOUND RANGE EXCEEDED\n{:#x?}", _stack_frame);
-}
-
-pub fn invalid_opcode(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: INVALID OPCODE\n{:#x?}", _stack_frame);
-}
-
-pub fn coprocessor_not_available(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: COPROCESSOR NOT AVAILABLE\n{:#x?}", _stack_frame);
-}
-
-pub fn double_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: DOUBLE FAULT\n{:#x?}", _stack_frame);
-}
-
-pub fn coprocessor_segment_overrun(_stack_frame: &mut InterruptStackFrame) {
-	println!(
-		"EXCEPTION: COPROCESSOR SEGMENT OVERRUN\n{:#x?}",
-		_stack_frame
+pub extern "C" fn breakpoint(stack_frame: &mut InterruptStackFrame) {
+	log!(
+		LogLevel::Info,
+		"EXCEPTION: BREAKPOINT at {:#x}\n{:#?}",
+		stack_frame.instruction_pointer,
+		stack_frame
 	);
 }
 
-pub fn invalid_task_state_segment(_stack_frame: &mut InterruptStackFrame) {
-	println!(
-		"EXCEPTION: INVALID TASK STATE SEGMENT\n{:#x?}",
-		_stack_frame
+pub extern "C" fn overflow(stack_frame: &mut InterruptStackFrame) {
+	log!(LogLevel::Info, "EXCEPTION: OVERFLOW\n{:#?}", stack_frame);
+}
+
+pub extern "C" fn bound_range_exceeded(stack_frame: &mut InterruptStackFrame) {
+	log!(
+		LogLevel::Info,
+		"EXCEPTION: BOUND RANGE EXCEEDED\n{:#?}",
+		stack_frame
 	);
 }
 
-pub fn segment_not_present(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: SEGMENT NOT PRESENT\n{:#x?}", _stack_frame);
+pub extern "C" fn invalid_opcode(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Invalid Opcode", Some(stack_frame));
 }
 
-pub fn stack_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: STACK FAULT\n{:#x?}", _stack_frame);
-}
-
-pub fn general_protection_fault(stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: GENERAL PROTECTION FAULT\n{:#x?}", stack_frame);
-}
-
-pub fn page_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: PAGE FAULT\n{:#x?}", _stack_frame);
-}
-
-pub fn reserved(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: RESERVED\n{:#x?}", _stack_frame);
-}
-
-pub fn math_fault(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: MATH FAULT\n{:#x?}", _stack_frame);
-}
-
-pub fn alignment_check(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: ALIGNMENT CHECK\n{:#x?}", _stack_frame);
-}
-
-pub fn machine_check(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: MACHINE CHECK\n{:#x?}", _stack_frame);
-}
-
-pub fn simd_floating_point_exception(_stack_frame: &mut InterruptStackFrame) {
-	println!(
-		"EXCEPTION: SIMD FLOATING POINT EXCEPTION\n{:#x?}",
-		_stack_frame
+pub extern "C" fn coprocessor_not_available(stack_frame: &mut InterruptStackFrame) {
+	log!(
+		LogLevel::Info,
+		"EXCEPTION: COPROCESSOR NOT AVAILABLE\n{:#?}",
+		stack_frame
 	);
 }
 
-pub fn virtualization_exception(_stack_frame: &mut InterruptStackFrame) {
-	println!("EXCEPTION: VIRTUALIZATION EXCEPTION\n{:#x?}", _stack_frame);
+pub extern "C" fn double_fault(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Double Fault", Some(stack_frame));
+}
+
+pub extern "C" fn coprocessor_segment_overrun(stack_frame: &mut InterruptStackFrame) {
+	log!(
+		LogLevel::Info,
+		"EXCEPTION: COPROCESSOR SEGMENT OVERRUN\n{:#?}",
+		stack_frame
+	);
+}
+
+pub extern "C" fn invalid_task_state_segment(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Invalid Task State Segment", Some(stack_frame));
+}
+
+pub extern "C" fn segment_not_present(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Segment Not Present", Some(stack_frame));
+}
+
+pub extern "C" fn stack_fault(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Stack Fault", Some(stack_frame));
+}
+
+pub extern "C" fn general_protection_fault(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"General Protection Fault", Some(stack_frame));
+}
+
+pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame) {
+	log!(LogLevel::Error, "EXCEPTION: PAGE FAULT\n{:#?}", stack_frame);
+}
+
+pub extern "C" fn reserved(stack_frame: &mut InterruptStackFrame) {
+	log!(LogLevel::Info, "EXCEPTION: RESERVED\n{:#?}", stack_frame);
+}
+
+pub extern "C" fn math_fault(stack_frame: &mut InterruptStackFrame) {
+	log!(LogLevel::Info, "EXCEPTION: MATH FAULT\n{:#?}", stack_frame);
+}
+
+pub extern "C" fn alignment_check(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Alignment Check", Some(stack_frame));
+}
+
+pub extern "C" fn machine_check(stack_frame: &mut InterruptStackFrame) {
+	handle_panic(&"Machine Check", Some(stack_frame));
+}
+
+pub extern "C" fn simd_floating_point_exception(stack_frame: &mut InterruptStackFrame) {
+	log!(
+		LogLevel::Info,
+		"EXCEPTION: SIMD FLOATING POINT EXCEPTION\n{:#?}",
+		stack_frame
+	);
+}
+
+pub extern "C" fn virtualization_exception(stack_frame: &mut InterruptStackFrame) {
+	log!(
+		LogLevel::Info,
+		"EXCEPTION: VIRTUALIZATION EXCEPTION\n{:#?}",
+		stack_frame
+	);
 }
 
 pub fn timer_interrupt(_stack_frame: &mut InterruptStackFrame) {
