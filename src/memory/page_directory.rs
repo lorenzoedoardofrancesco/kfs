@@ -67,26 +67,6 @@ impl PageDirectoryEntry {
 	pub fn del_attrib(&mut self, attrib: PageDirectoryFlags) {
 		self.value &= !attrib.bits();
 	}
-
-	// Check if present
-	pub fn is_present(&self) -> bool {
-		(self.value & PageDirectoryFlags::PRESENT.bits()) != 0
-	}
-
-	// Check if writable
-	pub fn is_writable(&self) -> bool {
-		(self.value & PageDirectoryFlags::WRITABLE.bits()) != 0
-	}
-
-	// Check if it's a 4MB page
-	pub fn is_4mb(&self) -> bool {
-		(self.value & PageDirectoryFlags::_4MB.bits()) != 0
-	}
-
-	// Returns the frame number
-	pub fn frame(&self) -> u32 {
-		self.value & PageDirectoryFlags::FRAME.bits()
-	}
 }
 
 #[repr(C, align(4096))]
@@ -95,12 +75,6 @@ pub struct PageDirectory {
 }
 
 impl PageDirectory {
-	pub fn new() -> Self {
-		PageDirectory {
-			entries: [PageDirectoryEntry::new(); ENTRY_COUNT],
-		}
-	}
-
 	/// Adds or updates a mapping in the page directory.
 	pub fn add_entry(&mut self, index: usize, frame: u32, flags: PageDirectoryFlags) {
 		let entry = &mut self.entries[index];
@@ -112,16 +86,6 @@ impl PageDirectory {
 	pub fn remove_entry(&mut self, index: usize) {
 		let entry = &mut self.entries[index];
 		*entry = PageDirectoryEntry::new();
-	}
-
-	/// Translates a virtual address to an index in the directory.
-	pub fn translate(&self, virtual_address: usize) -> Option<u32> {
-		let index = self.get_index(virtual_address);
-		if self.entries[index].is_present() {
-			Some(self.entries[index].frame())
-		} else {
-			None
-		}
 	}
 
 	/// Gets the index in the entries array for a virtual address.

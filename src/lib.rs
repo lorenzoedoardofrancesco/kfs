@@ -56,6 +56,7 @@ mod utils;
 mod vga;
 
 use boot::multiboot;
+use memory::physical_memory_managment::PMM;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
 use structures::{gdt, idt};
@@ -76,6 +77,7 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	init(multiboot_magic, multiboot_addr);
 	//unsafe { core::arch::asm!("mov dx, 0; div dx") };
 	crate::memory::kmalloc::kmalloc_tester();
+	PMM.lock().print_memory_map();
 	loop {
 		process_keyboard_input();
 		animate_parrot();

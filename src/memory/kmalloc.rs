@@ -7,7 +7,7 @@ use bitflags::bitflags;
 use core::ptr;
 use core::sync::atomic::Ordering;
 
-use crate::memory::page_directory::{ PAGE_DIRECTORY, PageDirectoryFlags };
+use crate::memory::page_directory::{PageDirectoryFlags, PAGE_DIRECTORY};
 
 static mut HEAP_START: *mut u8 = 0 as *mut u8;
 static mut HEAP_END: *mut u8 = 0 as *mut u8;
@@ -103,6 +103,9 @@ pub unsafe fn kmalloc(mut size: u32) -> Option<*mut u8> {
 	while current < HEAP_END {
 		let header = current as *mut KmallocHeader;
 		if (*header).used() == false && (*header).size() >= size {
+			if current.add(size as usize) > KERNEL_HEAP_BREAK {
+				kbrk(size as isize);
+			}
 			let old_size = (*header).size();
 			(*header).set_used(true);
 			(*header).set_size(size);
@@ -152,24 +155,23 @@ pub unsafe fn kfree(ptr: *mut u8) {
 }
 
 pub unsafe fn kdefrag() {
-    let mut header = HEAP_START as *mut KmallocHeader;
+	let mut header = HEAP_START as *mut KmallocHeader;
 
-    while (header as *mut u8) < HEAP_END {
-        let next_header = (header as *mut u8).add((*header).size() as usize) as *mut KmallocHeader;
-        
-        if (next_header as *mut u8) >= HEAP_END {
-             break;
-        }
+	while (header as *mut u8) < HEAP_END {
+		let next_header = (header as *mut u8).add((*header).size() as usize) as *mut KmallocHeader;
 
-        if !(*header).used() && !(*next_header).used() {
-            let new_size = (*header).size() + (*next_header).size();
-            (*header).set_size(new_size);
-        } else {
-            header = next_header;
-        }
-    };
+		if (next_header as *mut u8) >= HEAP_END {
+			break;
+		}
+
+		if !(*header).used() && !(*next_header).used() {
+			let new_size = (*header).size() + (*next_header).size();
+			(*header).set_size(new_size);
+		} else {
+			header = next_header;
+		}
+	}
 }
-
 
 /// Adjust the size of the kernel heap.
 ///
@@ -215,9 +217,8 @@ pub unsafe fn kbrk(byte: isize) -> Option<*mut u8> {
 		let page = new_break_page - 1;
 		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Acquire);
 		let index = directory.get_index(new_break_page * PAGE_SIZE);
-		directory.add_entry(index, frame, PageDirectoryFlags::PRESENT);
+		//directory.add_entry(index, frame, PageDirectoryFlags::PRESENT);
 		current_break_page += 1;
-		
 	}
 
 	// Update the kernel heap break.
@@ -285,7 +286,10 @@ pub fn kmalloc_tester() {
 		kfree(c);
 		kprint_heap();
 		let y = kmalloc(3000).unwrap();
-		let z = kmalloc(4000).unwrap();
+		for i in 0..3000 {
+			*y.add(i) = 0x42;
+		}
+		let z = kmalloc(54000).unwrap();
 		*z = 0x55;
 		kfree(y);
 		kprint_heap();
