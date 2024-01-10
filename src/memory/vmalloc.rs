@@ -50,7 +50,7 @@ pub unsafe fn vmalloc(size: usize) -> *mut u8 {
 /// A pointer to the start of the allocated virtual pages, or null if allocation fails.
 unsafe fn allocate_virtual_pages(num_pages: usize) -> *mut u8 {
 
-    let address = PMM.lock().allocate_multiple_frames(num_pages as u32);
+    //let address = PMM.lock().allocate_multiple_frames(num_pages as u32);
     core::ptr::null_mut() // Placeholder
 }
 

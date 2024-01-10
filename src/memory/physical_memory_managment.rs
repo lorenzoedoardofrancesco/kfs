@@ -161,40 +161,9 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	pub fn free_frame(&mut self, address: Result<u32, &'static str>) {
-		// mettre un Result parce que si l'adresse est pas utilisable on fait quoi ?
-		let address = address.unwrap();
+	pub fn free_frame(&mut self, address: u32) {
 		if self.is_address_usable(address) {
 			self.mmap_unset(address / PMMNGR_BLOCK_SIZE);
-		}
-	}
-
-	pub fn allocate_multiple_frames(&mut self, pages: u32) -> Result<u32, &'static str> {
-		if self.used_blocks + pages >= self.max_blocks {
-			return Err("Out of memory");
-		}
-
-		let mut frame = 0;
-		let mut count = 0;
-		for i in 0..self.max_blocks {
-			if !self.mmap_test(i) {
-				count += 1;
-				if count == pages {
-					frame = i - pages + 1;
-					break;
-				}
-			} else {
-				count = 0;
-			}
-		}
-
-		if frame != 0 {
-			for i in frame..frame + pages {
-				self.mmap_set(i);
-			}
-			Ok(frame * PMMNGR_BLOCK_SIZE)
-		} else {
-			Err("Out of memory")
 		}
 	}
 
@@ -254,7 +223,7 @@ impl PhysicalMemoryManager {
 
 		unsafe {
 			KERNEL_SPACE_START = &_kernel_start as *const u8 as u32;
-			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x100000;
+			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x1000000;
 			USER_SPACE_START = KERNEL_SPACE_END;
 			USER_SPACE_END = self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
 

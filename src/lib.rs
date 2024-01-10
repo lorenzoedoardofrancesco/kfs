@@ -58,7 +58,6 @@ mod vga;
 use boot::multiboot;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
-use shell::prints;
 use structures::{gdt, idt};
 use utils::{debug, librs::hlt};
 use vga::parrot::animate_parrot;
@@ -75,7 +74,8 @@ use vga::parrot::animate_parrot;
 #[no_mangle]
 pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	init(multiboot_magic, multiboot_addr);
-	unsafe { core::arch::asm!("mov dx, 0; div dx") };
+	//unsafe { core::arch::asm!("mov dx, 0; div dx") };
+	crate::memory::kmalloc::kmalloc_tester();
 	loop {
 		process_keyboard_input();
 		animate_parrot();
@@ -108,5 +108,5 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	memory::page_directory::init_pages();
 	// use crate::memory::physical_memory_managment::PMM;
 	// PMM.lock().print_memory_map();
-	prints::print_welcome_message();
+	//prints::print_welcome_message();
 }

@@ -37,7 +37,7 @@ bitflags! {
 		const _4MB          = 0b1000_0000;
 		const CPU_GLOBAL    = 0b1_0000_0000;
 		const LV4_GLOBAL    = 0b10_0000_0000;
-		const FRAME         = 0x7FFFF000;
+		const FRAME         = 0xFFFFF000;
 	}
 }
 
@@ -125,7 +125,7 @@ impl PageDirectory {
 	}
 
 	/// Gets the index in the entries array for a virtual address.
-	fn get_index(&self, virtual_address: usize) -> usize {
+	pub fn get_index(&self, virtual_address: usize) -> usize {
 		(virtual_address >> 22) & 0x3ff
 	}
 }

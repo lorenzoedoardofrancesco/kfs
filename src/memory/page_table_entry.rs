@@ -30,7 +30,10 @@ impl PageTableEntry {
 	}
 
 	pub fn alloc_new() -> Self {
-		let frame = PMM.lock().allocate_frame().expect("Failed to allocate frame"); //Attention faut faire un autre truc que panic mais je sais pas quoi pour l'instant
+		let frame = PMM
+			.lock()
+			.allocate_frame()
+			.expect("Failed to allocate frame"); //Attention faut faire un autre truc que panic mais je sais pas quoi pour l'instant
 		let mut entry = PageTableEntry::new();
 		entry.set_frame(frame);
 		entry
@@ -41,40 +44,30 @@ impl PageTableEntry {
 		self.value |= attribute.bits();
 	}
 
-    /// Removes the specified attribute flags from this entry.
-    pub fn remove_attribute(&mut self, attribute: PageTableFlags) {
-        self.value &= !attribute.bits();
-    }
+	/// Removes the specified attribute flags from this entry.
+	pub fn remove_attribute(&mut self, attribute: PageTableFlags) {
+		self.value &= !attribute.bits();
+	}
 
-    /// Sets the frame address for this entry.
-    /// Ensure that the address is correctly aligned and doesn't interfere with flags.
-    pub fn set_frame(&mut self, frame: u32) {
-        let frame_address = frame & PageTableFlags::FRAME.bits();
-        self.value = (self.value & !PageTableFlags::FRAME.bits()) | frame_address;
-    }
+	/// Sets the frame address for this entry.
+	/// Ensure that the address is correctly aligned and doesn't interfere with flags.
+	pub fn set_frame(&mut self, frame: u32) {
+		let frame_address = frame & PageTableFlags::FRAME.bits();
+		self.value = (self.value & !PageTableFlags::FRAME.bits()) | frame_address;
+	}
 
-    /// Returns true if the entry is present in memory.
-    pub fn is_present(&self) -> bool {
-        self.value & PageTableFlags::PRESENT.bits() != 0
-    }
+	/// Returns true if the entry is present in memory.
+	pub fn is_present(&self) -> bool {
+		self.value & PageTableFlags::PRESENT.bits() != 0
+	}
 
-    /// Returns true if the entry is writable.
-    pub fn is_writable(&self) -> bool {
-        self.value & PageTableFlags::WRITABLE.bits() != 0
-    }
+	/// Returns true if the entry is writable.
+	pub fn is_writable(&self) -> bool {
+		self.value & PageTableFlags::WRITABLE.bits() != 0
+	}
 
-    /// Returns the frame address for this entry.
-    pub fn frame(&self) -> u32 {
-        self.value & PageTableFlags::FRAME.bits()
-    }
+	/// Returns the frame address for this entry.
+	pub fn frame(&self) -> u32 {
+		self.value & PageTableFlags::FRAME.bits()
+	}
 }
-
-/*
-
-pub unsafe fn enable_paging() {
-	use core::arch::asm;
-
-	let page_directory = page_directory as *const PageDirectory as usize;
-	asm!("mov eax, $0; mov cr3, eax; mov eax, cr0; or eax, 0x80000000; mov cr0, eax" :: "r"(page_directory) : "eax" : "intel", "volatile");
-}
-*/
