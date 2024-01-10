@@ -104,7 +104,7 @@ pub unsafe fn kmalloc(mut size: u32) -> Option<*mut u8> {
 		let header = current as *mut KmallocHeader;
 		if (*header).used() == false && (*header).size() >= size {
 			if current.add(size as usize) > KERNEL_HEAP_BREAK {
-				kbrk(size as isize);
+				kbrk(size as isize); //TODO
 			}
 			let old_size = (*header).size();
 			(*header).set_used(true);
@@ -213,6 +213,8 @@ pub unsafe fn kbrk(byte: isize) -> Option<*mut u8> {
 			return Option::None;
 		}
 
+		println!("Allocating frame: {:#010X}", frame.unwrap() as usize);
+
 		let frame = frame.unwrap();
 		let page = new_break_page - 1;
 		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Acquire);
@@ -299,6 +301,7 @@ pub fn kmalloc_tester() {
 		kprint_heap();
 		kfree(z);
 		kprint_heap();
+
 		//let d = kmalloc(12).unwrap();
 		//println!("d: {:#010X}", d as usize);
 	}

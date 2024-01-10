@@ -4,7 +4,7 @@ use spin::Mutex;
 
 const MAX_REGIONS: usize = 10;
 const PMMNGR_BLOCK_SIZE: u32 = 4096; // 4KiB
-const PMMNGR_BLOCKS_PER_BYTE: u32 = 8;
+const PMMNGR_BLOCKS_PER_INDEX: u32 = 32;
 const USED_BLOCK: u32 = 0xffffffff;
 
 pub static mut KERNEL_SPACE_START: u32 = 0;
@@ -57,8 +57,9 @@ extern "C" {
 impl PhysicalMemoryManager {
 	pub fn init(&mut self) {
 		self.max_blocks = self.memory_size / PMMNGR_BLOCK_SIZE;
-		self.memory_map_size = self.max_blocks / PMMNGR_BLOCKS_PER_BYTE;
+		self.memory_map_size = self.max_blocks / PMMNGR_BLOCKS_PER_INDEX;
 
+		println!("Memory size: {:#x}, max blocks: {:#x}, memory map size: {:#x}", self.memory_size, self.max_blocks, self.memory_map_size);
 		self.memory_map = unsafe {
 			core::slice::from_raw_parts_mut(
 				&_kernel_end as *const u8 as *mut u32,
@@ -152,7 +153,7 @@ impl PhysicalMemoryManager {
 		}
 
 		let frame = self.mmap_first_free();
-		println!("Frame: {:#x}", frame);
+		//println!("Frame: {:#x}", frame);
 		if frame != 0 {
 			self.mmap_set(frame);
 			Ok(frame * PMMNGR_BLOCK_SIZE)
