@@ -56,6 +56,7 @@ mod utils;
 mod vga;
 
 use boot::multiboot;
+use memory::physical_memory_managment::PMM;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
 use structures::{gdt, idt};
@@ -79,6 +80,7 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	//PMM.lock().print_memory_map();
 	unsafe {
 		memory_management_tester();
+		PMM.lock().print_memory_map();	
 	}
 	loop {
 		process_keyboard_input();

@@ -1,3 +1,5 @@
+use core::ptr::addr_eq;
+
 use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag};
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -103,6 +105,11 @@ impl PhysicalMemoryManager {
 		let offset = bit % 32;
 		self.memory_map[index as usize] &= !(1 << offset);
 		self.used_blocks -= 1;
+	}
+
+	fn mmap_unset_address(&mut self, address: u32) {
+		let bit = address / PMMNGR_BLOCK_SIZE;
+		self.mmap_unset(bit);
 	}
 
 	/// Tests if a bit is set.
@@ -263,7 +270,7 @@ impl PhysicalMemoryManager {
 
 			for j in 0..32 {
 				if block & (1 << j) != 0 {
-					bits[31 - j] = '1';
+					bits[j] = '1';
 				}
 			}
 
@@ -277,34 +284,32 @@ impl PhysicalMemoryManager {
 	}
 
 	pub fn update_bitmap_from_memory(&mut self) {
-        // Iterate over the entire memory range in block-size increments
-        for address in (0..self.memory_size).step_by(PMMNGR_BLOCK_SIZE as usize) {
-            // Check if the memory block (frame) at this address is used
-            if self.is_block_used(address) {
-                // Calculate the corresponding bit in the bitmap
-                let bit = address / PMMNGR_BLOCK_SIZE;
-                // Set the bit to mark the block as used
-                self.mmap_set(bit);
-            }
-        }
-    }
+		// Iterate over the entire memory range in block-size increments
+		for address in (0..self.memory_size).step_by(PMMNGR_BLOCK_SIZE as usize) {
+			// Check if the memory block (frame) at this address is used
+			if self.is_block_used(address) {
+				// Calculate the corresponding bit in the bitmap
+				let bit = address / PMMNGR_BLOCK_SIZE;
+				// Set the bit to mark the block as used
+				self.mmap_set(bit);
+			}
+		}
+	}
 
 	fn is_block_used(&self, address: u32) -> bool {
-        let block_ptr = address as *const u8; // Pointer to the start of the block
+		let block_ptr = address as *const u8; // Pointer to the start of the block
 
-        for offset in 0..(PMMNGR_BLOCK_SIZE as isize) {
-            // Check each byte in the block
-            unsafe {
-                if block_ptr.offset(offset).read_volatile() != 0 {
-                    // If any byte is non-zero, the block is used
-                    return true;
-                }
-            }
-        }
-
-        // If all bytes are zero, the block is not used
-        false
-    }
+		for offset in 0..(PMMNGR_BLOCK_SIZE as isize) {
+			// Check each byte in the block
+			unsafe {
+				if block_ptr.offset(offset).read_volatile() != 0 {
+					// If any byte is non-zero, the block is used
+					return true;
+				}
+			}
+		}
+		false
+	}
 }
 
 pub fn physical_memory_manager_init() {
@@ -312,8 +317,8 @@ pub fn physical_memory_manager_init() {
 
 	pmm.process_memory_map();
 	pmm.init();
-	init_heap();
 	pmm.update_bitmap_from_memory();
+	init_heap();
 	pmm.print_memory_map();
 }
 
