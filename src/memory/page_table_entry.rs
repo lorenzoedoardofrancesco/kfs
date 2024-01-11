@@ -29,6 +29,12 @@ impl PageTableEntry {
 		PageTableEntry { value: 0 }
 	}
 
+	pub fn new_from_address(address: u32, flags: PageTableFlags) -> Self {
+		PageTableEntry {
+			value: address | flags.bits(),
+		}
+	}
+
 	pub fn alloc_new() -> Result<Self, &'static str> {
 		let frame = PMM
 			.lock()
@@ -74,5 +80,9 @@ impl PageTableEntry {
 	/// Returns the frame address for this entry.
 	pub fn frame(&self) -> u32 {
 		self.value & PageTableFlags::FRAME.bits()
+	}
+
+	pub fn is_unused(&self) -> bool {
+		true   // TODO implement the used/unused 
 	}
 }

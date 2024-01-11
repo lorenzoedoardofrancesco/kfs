@@ -2,12 +2,14 @@
 //! kmalloc and kfree manage memory in a simple linear heap.
 //! ksbrk adjusts the heap size, and ksize returns the size of an allocated block.
 
-use crate::memory::{page_directory::PAGE_SIZE, physical_memory_managment::PMM};
+use crate::memory::{
+	page_directory::{ENTRY_COUNT, PAGE_DIRECTORY, PAGE_SIZE},
+	page_table_entry::PageTableFlags,
+	physical_memory_managment::PMM,
+};
 use bitflags::bitflags;
 use core::ptr;
 use core::sync::atomic::Ordering;
-
-use crate::memory::page_directory::PAGE_DIRECTORY;
 
 static mut HEAP_START: *mut u8 = 0 as *mut u8;
 static mut HEAP_END: *mut u8 = 0 as *mut u8;
@@ -65,7 +67,7 @@ pub unsafe fn kmalloc_init(start: *mut u8, size: u32) {
 		panic!("kmalloc_init | Invalid heap initialization parameters");
 	}
 
-	core::ptr::write_bytes(start, 1, size as usize);
+	//core::ptr::write_bytes(start, 1, size as usize);
 
 	HEAP_START = start;
 	HEAP_END = start.add(size as usize);
@@ -192,47 +194,55 @@ pub unsafe fn kdefrag() {
 /// # Returns
 ///
 /// An `Option` containing the new break address if successful, or `None` if the operation fails.
-pub unsafe fn kbrk(byte: isize) -> Option<*mut u8> {
-	// Calculate the new break address.
-	let new_break = if byte >= 0 {
-		KERNEL_HEAP_BREAK.add(byte as usize)
-	} else {
-		KERNEL_HEAP_BREAK.sub(-byte as usize)
-	};
-
-	// Check if the new break is within the bounds of our heap.
-	if new_break < HEAP_START || new_break >= HEAP_END {
-		panic!(
-			"kbrk | New break address is out of bounds: {:#010X}",
-			new_break as usize
-		);
-	}
-
-	// Adjust the number of pages required for the new heap size.
-	let new_break_page = align_up(new_break as usize) / PAGE_SIZE;
-	let mut current_break_page = align_up(KERNEL_HEAP_BREAK as usize) / PAGE_SIZE;
-
-	// If the new break is greater than the current break, we need to allocate more pages.
-	while new_break_page > current_break_page {
-		let frame = PMM.lock().allocate_frame();
-		if frame.is_err() {
-			return Option::None;
+fn kbrk(increment: isize) -> *mut u8 {
+	unsafe {
+		let new_break = KERNEL_HEAP_BREAK.offset(increment);
+		if new_break > HEAP_END {
+			panic!("Out of heap memory");
 		}
 
-		println!("Allocating frame: {:#010X}", frame.unwrap() as usize);
+		while KERNEL_HEAP_BREAK < new_break {
+			let virtual_address = KERNEL_HEAP_BREAK as usize;
 
-		let frame = frame.unwrap();
-		let page = new_break_page - 1;
-		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Acquire);
-		let index = directory.get_index(new_break_page * PAGE_SIZE);
-		//directory.add_entry(index, frame, PageDirectoryFlags::PRESENT);
-		current_break_page += 1;
+			// Check if the current virtual address already has a mapped frame
+			let directory_index = virtual_address / (PAGE_SIZE * ENTRY_COUNT);
+			let page_table_index = (virtual_address % (PAGE_SIZE * ENTRY_COUNT)) / PAGE_SIZE;
+
+			let page_directory_ptr = PAGE_DIRECTORY.load(Ordering::SeqCst);
+			let mut page_table = (*page_directory_ptr).entries[directory_index].get_page_table();
+
+			// If the page table does not exist, create it
+			if page_table.is_none() {
+				let new_table_frame = PMM
+					.lock()
+					.allocate_frame()
+					.expect("Out of physical memory for page table");
+				(*page_directory_ptr).entries[directory_index].set(
+					new_table_frame,
+					PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+				);
+				page_table = (*page_directory_ptr).entries[directory_index].get_page_table();
+			}
+
+			// Check if the specific page within the table is mapped
+			if let Some(ref mut page_table) = page_table {
+				if page_table.entries[page_table_index].is_unused() {
+					let page = PMM.lock().allocate_frame().expect("Out of physical memory");
+					page_table.map(virtual_address as u32, page, PageTableFlags::WRITABLE);
+				}
+			}
+
+			// Increment KERNEL_HEAP_BREAK by one page size until it reaches or surpasses new_break
+			KERNEL_HEAP_BREAK = KERNEL_HEAP_BREAK.offset(PAGE_SIZE as isize);
+
+			// Stop if we've reached or surpassed the new break point
+			if KERNEL_HEAP_BREAK >= new_break {
+				break;
+			}
+		}
+
+		KERNEL_HEAP_BREAK
 	}
-
-	// Update the kernel heap break.
-	KERNEL_HEAP_BREAK = new_break;
-
-	Some(new_break)
 }
 
 /// Aligns the given address upwards to the nearest multiple of the alignment.

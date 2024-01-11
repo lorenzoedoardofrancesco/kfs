@@ -16,7 +16,7 @@ pub struct PageTable {
 
 impl PageTable {
 	/// Creates a new, empty page table with default entries.
-	pub fn new() -> Self {
+	pub fn new(physical_address: u32, flags: PageTableFlags) -> Self {
 		PageTable {
 			entries: [PageTableEntry::new(); ENTRY_COUNT],
 		}
@@ -24,20 +24,10 @@ impl PageTable {
 
 	/// Maps a virtual address to a physical frame with the given attributes.
 	/// Errors if frame allocation or address translation fails.
-	pub fn map(
-		&mut self,
-		virt_addr: usize,
-		attributes: PageTableFlags,
-	) -> Result<(), &'static str> {
-		let phys_frame_addr = PMM.lock().allocate_frame()?;
-		let translated_addr = self.translate_physical_to_virtual(phys_frame_addr)?;
-
-		let entry_index = self.calculate_entry_index(virt_addr)?;
-		self.entries[entry_index].set_frame_address(translated_addr);
-		self.entries[entry_index].add_attribute(attributes | PageTableFlags::PRESENT);
-
-		Ok(())
-	}
+	pub fn map(&mut self, virtual_address: u32, physical_address: u32, flags: PageTableFlags) {
+        let index = virtual_address as usize / PAGE_SIZE;
+        self.entries[index] = PageTableEntry::new_from_address(physical_address, flags | PageTableFlags::PRESENT);
+    }
 
 	/// Translates a physical address to a virtual address.
 	/// Validates the physical address and checks for overflow.

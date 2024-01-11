@@ -49,6 +49,41 @@ impl PageDirectoryEntry {
 	}
 
 	// Set the frame address
+	pub fn get_page_table(&self) -> Option<&mut PageTable> {
+		if self.flags().contains(PageTableFlags::PRESENT) {
+			let table_address = self.address() & 0xFFFFF000; // Mask to get the address
+			Some(unsafe { &mut *(table_address as *mut PageTable) })
+		} else {
+			None
+		}
+	}
+
+	// Sets up a PageTable for this directory entry
+	pub fn set(&mut self, frame: u32, flags: PageTableFlags) {
+		self.set_address(frame);
+		self.set_flags(flags | PageTableFlags::PRESENT);
+	}
+
+	// Sets the frame address for this directory entry
+	pub fn set_address(&mut self, frame: u32) {
+		let frame_addr = (frame & PageDirectoryFlags::FRAME.bits()) as u32;
+		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | frame_addr;
+	}
+
+	// Gets the frame address from this directory entry
+	pub fn address(&self) -> u32 {
+		self.value & PageDirectoryFlags::FRAME.bits()
+	}
+
+	// Sets the flags for this directory entry
+	pub fn set_flags(&mut self, flags: PageTableFlags) {
+		self.value = (self.value & !PageTableFlags::all().bits()) | flags.bits();
+	}
+
+	// Gets the flags from this directory entry
+	pub fn flags(&self) -> PageTableFlags {
+		PageTableFlags::from_bits_truncate(self.value)
+	}
 	pub fn set_frame(&mut self, frame: u32) {
 		let frame_addr = frame & PageDirectoryFlags::FRAME.bits();
 		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | frame_addr;
@@ -87,6 +122,16 @@ impl PageDirectory {
 	/// Gets the index in the entries array for a virtual address.
 	pub fn get_index(&self, virtual_address: usize) -> usize {
 		(virtual_address >> 22) & 0x3ff
+	}
+
+	// Example: Function to get a specific entry by index
+	pub fn get_entry(&self, index: usize) -> &PageDirectoryEntry {
+		&self.entries[index]
+	}
+
+	// Example: Function to get a mutable reference to a specific entry by index
+	pub fn get_entry_mut(&mut self, index: usize) -> &mut PageDirectoryEntry {
+		&mut self.entries[index]
 	}
 }
 
