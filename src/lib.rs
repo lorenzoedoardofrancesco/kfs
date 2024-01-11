@@ -56,7 +56,6 @@ mod utils;
 mod vga;
 
 use boot::multiboot;
-use memory::physical_memory_managment::PMM;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
 use structures::{gdt, idt};
@@ -76,8 +75,11 @@ use vga::parrot::animate_parrot;
 pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	init(multiboot_magic, multiboot_addr);
 	//unsafe { core::arch::asm!("mov dx, 0; div dx") };
-	crate::memory::kmalloc::kmalloc_tester();
-	PMM.lock().print_memory_map();
+	//crate::memory::kmalloc::kmalloc_tester();
+	//PMM.lock().print_memory_map();
+	unsafe {
+		memory_management_tester();
+	}
 	loop {
 		process_keyboard_input();
 		animate_parrot();
@@ -106,9 +108,26 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	debug::init_serial_port();
 	multiboot::read_multiboot_info(multiboot_addr);
 	memory::physical_memory_managment::physical_memory_manager_init();
-	//memory::memory_space::init_pages();
 	memory::page_directory::init_pages();
-	// use crate::memory::physical_memory_managment::PMM;
-	// PMM.lock().print_memory_map();
 	//prints::print_welcome_message();
+}
+
+pub unsafe fn memory_management_tester() {
+	// Allocate a small block of memory
+	let address1 = crate::memory::kmalloc::kmalloc(1024);
+	println_serial!("Allocated 1024 bytes at {:?}", address1);
+
+	// Allocate a larger block of memory
+	let address2 = crate::memory::kmalloc::kmalloc(4096);
+	println_serial!("Allocated 4096 bytes at {:?}", address2);
+
+	// Deallocate the first block
+	crate::memory::kmalloc::kfree(address1.unwrap());
+	println_serial!("Freed memory at {:?}", address1);
+
+	// Allocate another block to see if freed memory is reused
+	let address3 = crate::memory::kmalloc::kmalloc(512);
+	println_serial!("Allocated 512 bytes at {:?}", address3);
+
+	// Additional checks can be performed here...
 }

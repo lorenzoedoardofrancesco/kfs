@@ -1,8 +1,4 @@
-use crate::memory::{
-	page_table::PageTable,
-	page_table_entry::{PageTableEntry, PageTableFlags},
-	physical_memory_managment::PMM,
-};
+use crate::memory::{page_table::PageTable, page_table_entry::PageTableFlags};
 use bitflags::bitflags;
 use core::arch::asm;
 
@@ -94,10 +90,9 @@ impl PageDirectory {
 	}
 }
 
-
 pub fn enable_paging() {
 	unsafe {
-        asm!("mov cr3, {}", in(reg) PAGE_DIRECTORY_ADDR);
+		asm!("mov cr3, {}", in(reg) PAGE_DIRECTORY_ADDR);
 		let mut cr0: u32;
 		asm!("mov {}, cr0", out(reg) cr0);
 		cr0 |= 0x80000000; // Set the PG bit to enable paging
@@ -118,7 +113,7 @@ pub fn init_pages() {
 			for (j, entry) in table.entries.iter_mut().enumerate() {
 				let virt = (i << 22) | (j << 12);
 				let phys = virt as u32;
-				entry.set_frame(phys);
+				entry.set_frame_address(phys);
 				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
 			}
 

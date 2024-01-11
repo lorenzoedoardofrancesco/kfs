@@ -7,7 +7,7 @@ use bitflags::bitflags;
 use core::ptr;
 use core::sync::atomic::Ordering;
 
-use crate::memory::page_directory::{PageDirectoryFlags, PAGE_DIRECTORY};
+use crate::memory::page_directory::PAGE_DIRECTORY;
 
 static mut HEAP_START: *mut u8 = 0 as *mut u8;
 static mut HEAP_END: *mut u8 = 0 as *mut u8;
@@ -61,6 +61,12 @@ impl KmallocHeader {
 }
 
 pub unsafe fn kmalloc_init(start: *mut u8, size: u32) {
+	if start.is_null() || size == 0 {
+		panic!("kmalloc_init | Invalid heap initialization parameters");
+	}
+
+	core::ptr::write_bytes(start, 1, size as usize);
+
 	HEAP_START = start;
 	HEAP_END = start.add(size as usize);
 	KERNEL_HEAP_BREAK = start;
@@ -84,9 +90,9 @@ pub unsafe fn kmalloc_init(start: *mut u8, size: u32) {
 ///
 /// A pointer to the allocated memory block, or null if there is insufficient space or if the
 /// allocation size exceeds the maximum allowable limit.
-pub unsafe fn kmalloc(mut size: u32) -> Option<*mut u8> {
+pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 	if size == 0 {
-		panic!("kmalloc | Attempted to allocate zero bytes");
+		return Err("kmalloc | Attempted to allocate zero bytes");
 	}
 
 	size += KMALLOC_HEADER_SIZE as u32;
@@ -96,7 +102,7 @@ pub unsafe fn kmalloc(mut size: u32) -> Option<*mut u8> {
 	}
 
 	if size > MAX_ALLOCATION_SIZE {
-		panic!("kmalloc | Attempted to allocate invalid size: {}", size);
+		return Err("kmalloc | Attempted to allocate invalid size");
 	}
 
 	let mut current = HEAP_START;
@@ -104,6 +110,7 @@ pub unsafe fn kmalloc(mut size: u32) -> Option<*mut u8> {
 		let header = current as *mut KmallocHeader;
 		if (*header).used() == false && (*header).size() >= size {
 			if current.add(size as usize) > KERNEL_HEAP_BREAK {
+				// TODO: Implement or call kbrk to increase heap size if necessary
 				kbrk(size as isize); //TODO
 			}
 			let old_size = (*header).size();
@@ -114,12 +121,11 @@ pub unsafe fn kmalloc(mut size: u32) -> Option<*mut u8> {
 				(*next_header).set_used(false);
 				(*next_header).set_size(old_size - size);
 			}
-			//println!("Header used: {} size: {} next_header: {:#010X} next_header_used: {} next_header_size: {}", (*header).used(), (*header).size(), next_header as usize, (*next_header).used(), (*next_header).size());
-			return Some(current.add(KMALLOC_HEADER_SIZE) as *mut u8);
+			return Ok(current.add(KMALLOC_HEADER_SIZE) as *mut u8);
 		}
 		current = current.add((*header).size() as usize);
 	}
-	Option::None
+	Err("kmalloc | Insufficient space in kernel heap")
 }
 
 /// Free a previously allocated memory block.

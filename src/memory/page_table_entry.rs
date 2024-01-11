@@ -1,6 +1,6 @@
-use bitflags::bitflags;
-
+use crate::memory::page_directory::PAGE_SIZE;
 use crate::memory::physical_memory_managment::PMM;
+use bitflags::bitflags;
 
 bitflags! {
 	pub struct PageTableFlags: u32 {
@@ -29,14 +29,15 @@ impl PageTableEntry {
 		PageTableEntry { value: 0 }
 	}
 
-	pub fn alloc_new() -> Self {
+	pub fn alloc_new() -> Result<Self, &'static str> {
 		let frame = PMM
 			.lock()
 			.allocate_frame()
-			.expect("Failed to allocate frame"); //Attention faut faire un autre truc que panic mais je sais pas quoi pour l'instant
+			.map_err(|_| "Failed to allocate frame for page table entry")?;
+
 		let mut entry = PageTableEntry::new();
-		entry.set_frame(frame);
-		entry
+		entry.set_frame_address(frame)?;
+		Ok(entry)
 	}
 
 	/// Adds the specified attribute flags to this entry.
@@ -51,9 +52,13 @@ impl PageTableEntry {
 
 	/// Sets the frame address for this entry.
 	/// Ensure that the address is correctly aligned and doesn't interfere with flags.
-	pub fn set_frame(&mut self, frame: u32) {
+	pub fn set_frame_address(&mut self, frame: u32) -> Result<(), &'static str> {
+		if frame % PAGE_SIZE as u32 != 0 {
+			return Err("Frame address is misaligned");
+		}
 		let frame_address = frame & PageTableFlags::FRAME.bits();
 		self.value = (self.value & !PageTableFlags::FRAME.bits()) | frame_address;
+		Ok(())
 	}
 
 	/// Returns true if the entry is present in memory.

@@ -11,6 +11,8 @@ pub static mut KERNEL_SPACE_START: u32 = 0;
 pub static mut KERNEL_SPACE_END: u32 = 0;
 pub static mut USER_SPACE_START: u32 = 0;
 pub static mut USER_SPACE_END: u32 = 0;
+pub static mut KERNEL_HEAP_SIZE: u32 = 0x100000; // 1MiB
+pub static mut MEMORY_MAP_SIZE: u32 = 0;
 
 #[derive(Clone, Copy)]
 pub struct MemoryRegion {
@@ -58,8 +60,13 @@ impl PhysicalMemoryManager {
 	pub fn init(&mut self) {
 		self.max_blocks = self.memory_size / PMMNGR_BLOCK_SIZE;
 		self.memory_map_size = self.max_blocks / PMMNGR_BLOCKS_PER_INDEX;
-
-		println!("Memory size: {:#x}, max blocks: {:#x}, memory map size: {:#x}", self.memory_size, self.max_blocks, self.memory_map_size);
+		unsafe {
+			MEMORY_MAP_SIZE = self.memory_map_size;
+		}
+		println!(
+			"Memory size: {:#x}, max blocks: {:#x}, memory map size: {:#x}",
+			self.memory_size, self.max_blocks, self.memory_map_size
+		);
 		self.memory_map = unsafe {
 			core::slice::from_raw_parts_mut(
 				&_kernel_end as *const u8 as *mut u32,
@@ -224,17 +231,16 @@ impl PhysicalMemoryManager {
 
 		unsafe {
 			KERNEL_SPACE_START = &_kernel_start as *const u8 as u32;
-			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x1000000;
+			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x100 + KERNEL_HEAP_SIZE;
 			USER_SPACE_START = KERNEL_SPACE_END;
-			USER_SPACE_END = self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
+			USER_SPACE_END =
+				self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
 
 			println_serial!("Kernel space start: {:#x}", KERNEL_SPACE_START);
 			println_serial!("Kernel space end: {:#x}", KERNEL_SPACE_END);
 			println_serial!("User space start: {:#x}", USER_SPACE_START);
 			println_serial!("User space end: {:#x}", USER_SPACE_END);
 		}
-
-
 	}
 
 	fn is_address_usable(&self, address: u32) -> bool {
@@ -276,5 +282,25 @@ pub fn physical_memory_manager_init() {
 
 	pmm.process_memory_map();
 	pmm.init();
+	init_heap();
 	pmm.print_memory_map();
+}
+
+pub fn init_heap() {
+	let heap_start = unsafe { &_kernel_end as *const u8 as u32 + MEMORY_MAP_SIZE };
+	let heap_size = unsafe { KERNEL_HEAP_SIZE };
+
+	if heap_start + heap_size > unsafe { KERNEL_SPACE_END } {
+		panic!("Kernel heap is too large");
+	}
+
+	unsafe {
+		crate::memory::kmalloc::kmalloc_init(heap_start as *mut u8, heap_size);
+	}
+}
+
+pub fn physical_address_is_valid(phys_addr: u32) -> bool {
+	let usable_region = PMM.lock().usable_regions[1];
+	phys_addr >= usable_region.start_address as u32
+		&& phys_addr <= usable_region.start_address as u32 + usable_region.size as u32
 }

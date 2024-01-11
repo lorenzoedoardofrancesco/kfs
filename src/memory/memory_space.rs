@@ -16,8 +16,8 @@ pub fn init_pages() {
 
             for (j, entry) in table.entries.iter_mut().enumerate() {
                 let virt: u32 = ((i << 22) | (j << 12)) as u32;
-                let phys = virt as u32;
-                entry.set_frame(phys);
+                let phys: u32 = virt as u32;
+                entry.set_frame_address(phys);
 
                 // Determine if the address is within kernel or user space and set attributes accordingly
                 if virt >= KERNEL_SPACE_START && virt < KERNEL_SPACE_END {
