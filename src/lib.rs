@@ -138,7 +138,4 @@ pub unsafe fn memory_management_tester() {
 
 	println!("address2: {:#010X}", address2 as usize);
 	println!("miao: {:#010X}", miaomiao as usize);
-	
-
-	.
 }
