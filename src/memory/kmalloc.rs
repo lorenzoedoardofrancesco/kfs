@@ -71,6 +71,9 @@ pub unsafe fn kmalloc_init() {
 	let header = KERNEL_HEAP_START as *mut KmallocHeader;
 	(*header).set_used(false);
 	(*header).set_size(KERNEL_HEAP_SIZE);
+
+	println_serial!("Heap Start: {:#010X}", HEAP_START as usize);
+	println_serial!("Heap End: {:#010X}", HEAP_END as usize);
 }
 
 /// Allocate a block of memory from the kernel heap.

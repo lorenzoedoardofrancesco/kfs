@@ -12,6 +12,11 @@ use core::arch::asm;
 const CMOS_ADDRESS: u16 = 0x70;
 const CMOS_DATA: u16 = 0x71;
 
+/// Align an address to the nearest page boundary.
+pub fn align_up(addr: usize) -> usize {
+	(addr + 0xfff) & !0xfff
+}
+
 /// Compares two arrays of bytes.
 pub fn array_cmp(a: &Line, b: &Line) -> bool {
 	a.iter().zip(b.iter()).all(|(&x, &y)| x == y)
@@ -165,3 +170,4 @@ fn print_hex_line(address: u32, count: usize, mode: PrintStackMode) {
 		}
 	}
 }
+
