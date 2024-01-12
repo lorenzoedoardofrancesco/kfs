@@ -75,6 +75,9 @@ pub unsafe fn kmalloc_init(start: *mut u8, size: u32) {
 	let header = HEAP_START as *mut KmallocHeader;
 	(*header).set_used(false);
 	(*header).set_size(size);
+
+	println_serial!("Heap Start: {:#010X}", HEAP_START as usize);
+	println_serial!("Heap End: {:#010X}", HEAP_END as usize);
 }
 
 /// Allocate a block of memory from the kernel heap.
@@ -227,8 +230,9 @@ fn kbrk(increment: isize) -> *mut u8 {
 			// Check if the specific page within the table is mapped
 			if let Some(ref mut page_table) = page_table {
 				if page_table.entries[page_table_index].is_unused() {
-					let page = PMM.lock().allocate_frame().expect("Out of physical memory");
-					page_table.map(virtual_address as u32, page, PageTableFlags::WRITABLE);
+					let frame = PMM.lock().allocate_frame().expect("Out of physical memory");
+					page_table.map(virtual_address as u32, frame, PageTableFlags::WRITABLE);
+					//println!("Virtual: {:#010X} | Physical: {:#010X}", virtual_address, frame);
 				}
 			}
 

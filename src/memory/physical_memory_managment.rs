@@ -244,6 +244,7 @@ impl PhysicalMemoryManager {
 				self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
 
 			println_serial!("Kernel space start: {:#x}", KERNEL_SPACE_START);
+			println_serial!("Kernel true end: {:#x}", &_kernel_end as *const u8 as u32);
 			println_serial!("Kernel space end: {:#x}", KERNEL_SPACE_END);
 			println_serial!("User space start: {:#x}", USER_SPACE_START);
 			println_serial!("User space end: {:#x}", USER_SPACE_END);
@@ -319,7 +320,7 @@ pub fn physical_memory_manager_init() {
 	pmm.init();
 	pmm.update_bitmap_from_memory();
 	init_heap();
-	pmm.print_memory_map();
+	//pmm.print_memory_map();
 }
 
 pub fn init_heap() {
