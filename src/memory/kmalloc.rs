@@ -5,15 +5,17 @@
 use crate::memory::{
 	page_directory::{ENTRY_COUNT, PAGE_DIRECTORY, PAGE_SIZE},
 	page_table_entry::PageTableFlags,
-	physical_memory_managment::PMM,
+	physical_memory_managment::{KERNEL_HEAP_SIZE, PMM},
 };
 use bitflags::bitflags;
 use core::ptr;
 use core::sync::atomic::Ordering;
 
-static mut HEAP_START: *mut u8 = 0 as *mut u8;
-static mut HEAP_END: *mut u8 = 0 as *mut u8;
-static mut KERNEL_HEAP_BREAK: *mut u8 = ptr::null_mut();
+use super::page_directory::{self, PageDirectoryFlags};
+
+pub static mut KERNEL_HEAP_START: *mut u8 = 0 as *mut u8;
+pub static mut KERNEL_HEAP_END: *mut u8 = 0 as *mut u8;
+pub static mut KERNEL_HEAP_BREAK: *mut u8 = ptr::null_mut();
 
 const MIN_ALLOCATION_SIZE: u32 = 32;
 const MAX_ALLOCATION_SIZE: u32 = PAGE_SIZE as u32 * 1024 - KMALLOC_HEADER_SIZE as u32;
@@ -62,19 +64,13 @@ impl KmallocHeader {
 	}
 }
 
-pub unsafe fn kmalloc_init(start: *mut u8, size: u32) {
-	if start.is_null() || size == 0 {
-		panic!("kmalloc_init | Invalid heap initialization parameters");
-	}
-
+pub unsafe fn kmalloc_init() {
 	//core::ptr::write_bytes(start, 1, size as usize);
 
-	HEAP_START = start;
-	HEAP_END = start.add(size as usize);
-	KERNEL_HEAP_BREAK = start;
-	let header = HEAP_START as *mut KmallocHeader;
+	KERNEL_HEAP_BREAK = KERNEL_HEAP_START;
+	let header = KERNEL_HEAP_START as *mut KmallocHeader;
 	(*header).set_used(false);
-	(*header).set_size(size);
+	(*header).set_size(KERNEL_HEAP_SIZE);
 }
 
 /// Allocate a block of memory from the kernel heap.
@@ -107,8 +103,8 @@ pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 		return Err("kmalloc | Attempted to allocate invalid size");
 	}
 
-	let mut current = HEAP_START;
-	while current < HEAP_END {
+	let mut current = KERNEL_HEAP_START;
+	while current < KERNEL_HEAP_END {
 		let header = current as *mut KmallocHeader;
 		if (*header).used() == false && (*header).size() >= size {
 			if current.add(size as usize) > KERNEL_HEAP_BREAK {
@@ -136,7 +132,7 @@ pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 ///
 /// * `ptr` - A pointer to the memory block to be freed.
 pub unsafe fn kfree(ptr: *mut u8) {
-	if ptr < HEAP_START || ptr >= HEAP_END {
+	if ptr < KERNEL_HEAP_START || ptr >= KERNEL_HEAP_END {
 		panic!(
 			"kfree | Attempted to free invalid pointer: {:#010X}",
 			ptr as usize
@@ -145,7 +141,7 @@ pub unsafe fn kfree(ptr: *mut u8) {
 
 	let header_ptr = ptr.sub(KMALLOC_HEADER_SIZE) as *mut KmallocHeader;
 
-	let mut current = HEAP_START;
+	let mut current = KERNEL_HEAP_START;
 	while current <= header_ptr as *mut u8 {
 		let header = current as *mut KmallocHeader;
 		if header == header_ptr {
@@ -163,12 +159,12 @@ pub unsafe fn kfree(ptr: *mut u8) {
 }
 
 pub unsafe fn kdefrag() {
-	let mut header = HEAP_START as *mut KmallocHeader;
+	let mut header = KERNEL_HEAP_START as *mut KmallocHeader;
 
-	while (header as *mut u8) < HEAP_END {
+	while (header as *mut u8) < KERNEL_HEAP_END {
 		let next_header = (header as *mut u8).add((*header).size() as usize) as *mut KmallocHeader;
 
-		if (next_header as *mut u8) >= HEAP_END {
+		if (next_header as *mut u8) >= KERNEL_HEAP_END {
 			break;
 		}
 
@@ -197,7 +193,7 @@ pub unsafe fn kdefrag() {
 fn kbrk(increment: isize) -> *mut u8 {
 	unsafe {
 		let new_break = KERNEL_HEAP_BREAK.offset(increment);
-		if new_break > HEAP_END {
+		if new_break > KERNEL_HEAP_END {
 			panic!("Out of heap memory");
 		}
 
@@ -228,7 +224,8 @@ fn kbrk(increment: isize) -> *mut u8 {
 			if let Some(ref mut page_table) = page_table {
 				if page_table.entries[page_table_index].is_unused() {
 					let page = PMM.lock().allocate_frame().expect("Out of physical memory");
-					page_table.map(virtual_address as u32, page, PageTableFlags::WRITABLE);
+					let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
+					page_directory.map(virtual_address as u32, page, PageDirectoryFlags::WRITABLE);
 				}
 			}
 
@@ -269,7 +266,7 @@ fn align_up(addr: usize) -> usize {
 ///
 /// The size of the allocated memory block.
 pub unsafe fn ksize(ptr: *mut u8) -> Option<u32> {
-	if ptr.is_null() || ptr < HEAP_START || ptr >= HEAP_END {
+	if ptr.is_null() || ptr < KERNEL_HEAP_START || ptr >= KERNEL_HEAP_END {
 		panic!(
 			"ksize | Attempted to get size of invalid pointer: {:#010X}",
 			ptr as usize
@@ -290,7 +287,7 @@ pub unsafe fn ksize(ptr: *mut u8) -> Option<u32> {
 
 pub fn kmalloc_tester() {
 	unsafe {
-		kmalloc_init(0x600000 as *mut u8, 0x10000 as u32);
+		//kmalloc_init(0x600000 as *mut u8, 0x10000 as u32);
 
 		let a = kmalloc(8).unwrap();
 		//crate::memory::page_directory::init_pages();
@@ -325,13 +322,13 @@ pub fn kmalloc_tester() {
 
 pub fn kprint_heap() {
 	unsafe {
-		let mut current = HEAP_START;
+		let mut current = KERNEL_HEAP_START;
 		println_serial!("");
-		println_serial!("Heap Start: {:#010X}", HEAP_START as usize);
-		println_serial!("Heap End: {:#010X}", HEAP_END as usize);
+		println_serial!("Heap Start: {:#010X}", KERNEL_HEAP_START as usize);
+		println_serial!("Heap End: {:#010X}", KERNEL_HEAP_END as usize);
 		println_serial!("Kernel Heap Break: {:#010X}", KERNEL_HEAP_BREAK as usize);
 
-		while current < HEAP_END {
+		while current < KERNEL_HEAP_END {
 			let header = current as *mut KmallocHeader;
 			println_serial!(
 				"{x:08X} | size: {s:08X} | used: {u}",

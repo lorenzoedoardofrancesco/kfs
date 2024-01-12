@@ -120,7 +120,7 @@ pub unsafe fn memory_management_tester() {
 	println_serial!("Allocated 1024 bytes at {:?}", address1);
 
 	// Allocate a larger block of memory
-	let address2 = crate::memory::kmalloc::kmalloc(4096);
+	let address2 = crate::memory::kmalloc::kmalloc(4096).unwrap() as *mut u32;
 	println_serial!("Allocated 4096 bytes at {:?}", address2);
 
 	// Deallocate the first block
@@ -132,4 +132,13 @@ pub unsafe fn memory_management_tester() {
 	println_serial!("Allocated 512 bytes at {:?}", address3);
 
 	// Additional checks can be performed here...
+	*address2 = 0xdeadbeef;
+	let miaomiao = address2.add(0x1000);
+	miaomiao.write_volatile(0xdeadbeef);
+
+	println!("address2: {:#010X}", address2 as usize);
+	println!("miao: {:#010X}", miaomiao as usize);
+	
+
+	.
 }

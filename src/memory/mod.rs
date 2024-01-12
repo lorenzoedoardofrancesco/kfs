@@ -8,8 +8,6 @@ pub mod page_table;
 
 pub mod page_directory;
 
-pub mod memory_space;
-
 pub mod kmalloc;
 
 pub mod vmalloc;

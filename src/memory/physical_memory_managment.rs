@@ -1,6 +1,8 @@
-use core::ptr::addr_eq;
-
 use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag};
+use crate::memory::kmalloc::kmalloc_init;
+use crate::memory::kmalloc::{KERNEL_HEAP_END, KERNEL_HEAP_START};
+use crate::memory::page_directory::{PAGE_DIRECTORY_ADDR, PAGE_TABLES_ADDR, PAGE_TABLE_SIZE};
+
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -8,12 +10,13 @@ const MAX_REGIONS: usize = 10;
 const PMMNGR_BLOCK_SIZE: u32 = 4096; // 4KiB
 const PMMNGR_BLOCKS_PER_INDEX: u32 = 32;
 const USED_BLOCK: u32 = 0xffffffff;
+pub const KERNEL_HEAP_SIZE: u32 = 0x100000; // 1MiB TODO MAKE IT VARIABLE
 
 pub static mut KERNEL_SPACE_START: u32 = 0;
+pub static mut MEMORY_MAP: u32 = 0;
 pub static mut KERNEL_SPACE_END: u32 = 0;
 pub static mut USER_SPACE_START: u32 = 0;
 pub static mut USER_SPACE_END: u32 = 0;
-pub static mut KERNEL_HEAP_SIZE: u32 = 0x100000; // 1MiB
 pub static mut MEMORY_MAP_SIZE: u32 = 0;
 
 #[derive(Clone, Copy)]
@@ -62,9 +65,30 @@ impl PhysicalMemoryManager {
 	pub fn init(&mut self) {
 		self.max_blocks = self.memory_size / PMMNGR_BLOCK_SIZE;
 		self.memory_map_size = self.max_blocks / PMMNGR_BLOCKS_PER_INDEX;
+
 		unsafe {
-			MEMORY_MAP_SIZE = self.memory_map_size;
+			KERNEL_SPACE_START = &_kernel_start as *const u8 as u32;
+			MEMORY_MAP = &_kernel_end as *const u8 as u32;
+			PAGE_DIRECTORY_ADDR = align_up(MEMORY_MAP + self.memory_map_size);
+			PAGE_TABLES_ADDR = PAGE_DIRECTORY_ADDR + 0x1000;
+			KERNEL_HEAP_START = (PAGE_TABLES_ADDR + PAGE_TABLE_SIZE as u32 + 0x1000) as *mut u8;
+			KERNEL_HEAP_END = KERNEL_HEAP_START.wrapping_add(KERNEL_HEAP_SIZE as usize);
+			KERNEL_SPACE_END = KERNEL_HEAP_END as u32;
+			USER_SPACE_START = KERNEL_SPACE_END;
+			USER_SPACE_END =
+				self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
+
+			println_serial!("Kernel space start: {:#x}", KERNEL_SPACE_START);
+			println_serial!("Memory map address: {:#x}", MEMORY_MAP);
+			println_serial!("Page directory address: {:#x}", PAGE_DIRECTORY_ADDR);
+			println_serial!("Page tables address: {:#x}", PAGE_TABLES_ADDR);
+			println_serial!("Kernel heap start: {:#x}", KERNEL_HEAP_START as u32);
+			println_serial!("Kernel heap end: {:#x}", KERNEL_HEAP_END as u32);
+			println_serial!("Kernel space end: {:#x}", KERNEL_SPACE_END);
+			println_serial!("User space start: {:#x}", USER_SPACE_START);
+			println_serial!("User space end: {:#x}", USER_SPACE_END);
 		}
+
 		println!(
 			"Memory size: {:#x}, max blocks: {:#x}, memory map size: {:#x}",
 			self.memory_size, self.max_blocks, self.memory_map_size
@@ -235,19 +259,6 @@ impl PhysicalMemoryManager {
 
 		self.memory_size = memory_map_entries.last().unwrap().address as u32
 			+ memory_map_entries.last().unwrap().len as u32;
-
-		unsafe {
-			KERNEL_SPACE_START = &_kernel_start as *const u8 as u32;
-			KERNEL_SPACE_END = &_kernel_end as *const u8 as u32 + 0x100 + KERNEL_HEAP_SIZE;
-			USER_SPACE_START = KERNEL_SPACE_END;
-			USER_SPACE_END =
-				self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
-
-			println_serial!("Kernel space start: {:#x}", KERNEL_SPACE_START);
-			println_serial!("Kernel space end: {:#x}", KERNEL_SPACE_END);
-			println_serial!("User space start: {:#x}", USER_SPACE_START);
-			println_serial!("User space end: {:#x}", USER_SPACE_END);
-		}
 	}
 
 	fn is_address_usable(&self, address: u32) -> bool {
@@ -317,26 +328,19 @@ pub fn physical_memory_manager_init() {
 
 	pmm.process_memory_map();
 	pmm.init();
-	pmm.update_bitmap_from_memory();
-	init_heap();
-	pmm.print_memory_map();
-}
-
-pub fn init_heap() {
-	let heap_start = unsafe { &_kernel_end as *const u8 as u32 + MEMORY_MAP_SIZE };
-	let heap_size = unsafe { KERNEL_HEAP_SIZE };
-
-	if heap_start + heap_size > unsafe { KERNEL_SPACE_END } {
-		panic!("Kernel heap is too large");
-	}
-
 	unsafe {
-		crate::memory::kmalloc::kmalloc_init(heap_start as *mut u8, heap_size);
+		kmalloc_init();
 	}
+	pmm.print_memory_map();
 }
 
 pub fn physical_address_is_valid(phys_addr: u32) -> bool {
 	let usable_region = PMM.lock().usable_regions[1];
 	phys_addr >= usable_region.start_address as u32
 		&& phys_addr <= usable_region.start_address as u32 + usable_region.size as u32
+}
+
+/// Align an address to the nearest page boundary.
+pub fn align_up(addr: u32) -> u32 {
+	(addr + 0xfff) & !0xfff
 }

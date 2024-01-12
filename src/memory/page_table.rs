@@ -3,7 +3,6 @@ use crate::{
 	memory::{
 		page_directory::{ENTRY_COUNT, PAGE_SIZE},
 		page_table_entry::{PageTableEntry, PageTableFlags},
-		physical_memory_managment::PMM,
 	},
 	utils::debug::LogLevel,
 };
@@ -24,10 +23,14 @@ impl PageTable {
 
 	/// Maps a virtual address to a physical frame with the given attributes.
 	/// Errors if frame allocation or address translation fails.
-	pub fn map(&mut self, virtual_address: u32, physical_address: u32, flags: PageTableFlags) {
-        let index = virtual_address as usize / PAGE_SIZE;
-        self.entries[index] = PageTableEntry::new_from_address(physical_address, flags | PageTableFlags::PRESENT);
-    }
+	pub fn map(&mut self, index: u32, physical_address: u32, flags: PageTableFlags) {
+		println!("Mapping virtual address: {:#x}", index);
+		println!("Physical address: {:#x}", physical_address);
+		println!("Flags: {:#x}", flags.bits());
+		println!("Index: {:#x}", index);
+		self.entries[index as usize] =
+			PageTableEntry::new_from_address(physical_address, flags | PageTableFlags::PRESENT);
+	}
 
 	/// Translates a physical address to a virtual address.
 	/// Validates the physical address and checks for overflow.
