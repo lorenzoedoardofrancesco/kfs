@@ -56,6 +56,7 @@ mod utils;
 mod vga;
 
 use boot::multiboot;
+use crate::memory::kmalloc::{ kmalloc, kfree, ksize, kprint_heap };
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
 use memory::physical_memory_managment::PMM;
@@ -80,8 +81,7 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	//crate::memory::kmalloc::kmalloc_tester();
 	//PMM.lock().print_memory_map();
 	unsafe {
-		//memory_management_tester();
-		PMM.lock().print_memory_map();
+		memory_management_tester();
 	}
 	loop {
 		process_keyboard_input();
@@ -116,28 +116,76 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	prints::print_welcome_message();
 }
 
-// pub unsafe fn memory_management_tester() {
-// 	// Allocate a small block of memory
-// 	let address1 = crate::memory::kmalloc::kmalloc(1024);
-// 	println_serial!("Allocated 1024 bytes at {:?}", address1);
+pub unsafe fn memory_management_tester() {
+        // Test 1: Allocate a small block of memory
+		println_serial!("\nTest 1: Allocating 256 bytes");
+		let address1 = kmalloc(256);
+		println_serial!("Address {:?}, Size {:?}", address1, ksize(address1.unwrap()));
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
 
-// 	// Allocate a larger block of memory
-// 	let address2 = crate::memory::kmalloc::kmalloc(4096).unwrap() as *mut usize;
-// 	println_serial!("Allocated 4096 bytes at {:?}", address2);
+		// Test 2: Allocate a larger block of memory
+		println_serial!("Test 2: Allocating 1024 bytes");
+		let address2 = kmalloc(1024);
+		println_serial!("Address {:?}, Size {:?}", address2, ksize(address2.unwrap()));
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
 
-// 	// Deallocate the first block
-// 	crate::memory::kmalloc::kfree(address1.unwrap());
-// 	println_serial!("Freed memory at {:?}", address1);
+		// Test 3: Deallocate the first block
+		println_serial!("Test 3: Deallocating 256 bytes at {:?}", address1.unwrap());
+		kfree(address1.unwrap());
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
 
-// 	// Allocate another block to see if freed memory is reused
-// 	let address3 = crate::memory::kmalloc::kmalloc(512);
-// 	println_serial!("Allocated 512 bytes at {:?}", address3);
+		// Test 4: Allocate another block to see if freed memory is reused
+		println_serial!("Test 4: Allocating 256 bytes again");
+		let address3 = kmalloc(256);
+		println_serial!("Address {:?}, Size {:?}", address3, ksize(address3.unwrap()));
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
 
-// 	// Additional checks can be performed here...
-// 	*address2 = 0xdeadbeef;
-// 	let miaomiao = address2.add(0x1000);
-// 	miaomiao.write_volatile(0xdeadbeef);
+		// Test 5: Allocate a block with a size that requires rounding up to the next page boundary
+		println_serial!("Test 5: Allocating 3000 bytes");
+		let address4 = kmalloc(3000);
+		println_serial!("Address {:?}, Size {:?}", address4, ksize(address4.unwrap()));
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
 
-// 	println!("address2: {:#010X}", address2);
-// 	println!("miao: {:#010X}", miaomiao);
-// }
+		// Test 6: Deallocate the second block
+		println_serial!("Test 6: Deallocating 1024 bytes at {:?}", address2.unwrap());
+		kfree(address2.unwrap());
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
+
+		// Test 7: Allocate a very large block of memory
+		println_serial!("Test 7: Allocating 377 bytes");
+		let address5 = kmalloc(377);
+		println_serial!("Address {:?}, Size {:?}", address5, ksize(address5.unwrap()));
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
+
+		// Test 8: Deallocate all remaining blocks
+		println_serial!("Test 8: Deallocating remaining blocks at {:?}, {:?}, {:?}", address3.unwrap(), address4.unwrap(), address5.unwrap());
+		kfree(address3.unwrap());
+		kfree(address4.unwrap());
+		kfree(address5.unwrap());
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
+
+		// Test 9: Allocate a block of memory that is larger than the entire heap
+		println_serial!("Test 9: Allocating 3000 bytes");
+		let address6 = kmalloc(3000);
+		println_serial!("Address {:?}, Size {:?}", address6, ksize(address6.unwrap()));
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
+
+		// Test 10: Deallocate the last block
+		println_serial!("Test 10: Deallocating 65536 bytes at {:?}", address6.unwrap());
+		kfree(address6.unwrap());
+		
+		println_serial!("Final state of the heap:");
+		kprint_heap();
+		crate::memory::physical_memory_managment::PMM.lock().print_memory_map();
+
+}
+

@@ -33,15 +33,14 @@ impl PageTableEntry {
 		self.value = address | flags.bits();
 	}
 
-	pub fn alloc_new() -> Result<Self, &'static str> {
+	pub fn alloc_new(&mut self) {
 		let frame = PMM
 			.lock()
 			.allocate_frame()
-			.map_err(|_| "Failed to allocate frame for page table entry")?;
+			.map_err(|_| "Failed to allocate frame for page table entry");
 
-		let mut entry = PageTableEntry::new();
-		entry.set_frame_address(frame)?;
-		Ok(entry)
+		self.set_frame_address(frame.unwrap());
+		self.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
 	}
 
 	/// Adds the specified attribute flags to this entry.

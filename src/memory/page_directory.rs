@@ -1,8 +1,6 @@
-use crate::memory::{page_directory, page_table};
 use crate::memory::{
-	page_table::PageTable, page_table_entry::PageTableEntry, page_table_entry::PageTableFlags,
+	page_table::PageTable, page_table_entry::PageTableFlags, physical_memory_managment::PMM,
 };
-use crate::vga::prompt::tab;
 use bitflags::bitflags;
 use core::arch::asm;
 use core::sync::atomic::{AtomicPtr, Ordering};
@@ -94,7 +92,7 @@ impl PageDirectoryEntry {
 		PageTableFlags::from_bits_truncate(self.value)
 	}
 
-	pub fn set_frame(&mut self, frame: usize) {
+	pub fn set_frame(&mut self, frame: u32) {
 		let frame_addr = frame & PageDirectoryFlags::FRAME.bits();
 		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | frame_addr;
 	}
@@ -124,6 +122,43 @@ impl PageDirectory {
 		let page_table = entry.get_page_table().unwrap();
 		let page_table_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
 		page_table.map(table_index, frame, page_table_flags);
+
+		// Print all informations
+		// println_serial!("\nPage Directory Mapping");
+		// println_serial!("Virtual Address: {:#x}", virtual_address);
+		// println_serial!("Physical Address: {:#x}", frame);
+		// println_serial!("Index: {:#x}", index);
+		// println_serial!("Table Index: {:#x}", table_index);
+	}
+
+	pub fn unmap(&mut self, virtual_address: u32) {
+		let index = (virtual_address >> 22) & 0x3ff;
+		let table_index = (virtual_address >> 12) & 0x3ff;
+		let entry = &mut self.entries[index as usize];
+		let page_table = entry.get_page_table().unwrap();
+		page_table.unmap(table_index);
+	}
+
+	pub fn map_range(&mut self, address: u32, size: u32, flags: PageDirectoryFlags) {
+		let start_address = address & !(PAGE_SIZE as u32 - 1); // Align start address down to page boundary
+		let end_address = (address + size + PAGE_SIZE as u32 - 1) & !(PAGE_SIZE as u32 - 1); // Align end address up
+
+		let mut current_address = start_address;
+		while current_address < end_address {
+			let index = (current_address >> 22) & 0x3ff;
+			let table_index = (current_address >> 12) & 0x3ff;
+
+			let page_table = &mut self.entries[index as usize].get_page_table().unwrap();
+			let entry = &mut page_table.entries[table_index as usize];
+
+
+			if PMM.lock().nmap_test_address(address) {
+				// Allocate a new frame if the page is not present
+				entry.alloc_new();
+			}
+
+			current_address += PAGE_SIZE as u32;
+		}
 	}
 
 	/// Adds or updates a mapping in the page directory.

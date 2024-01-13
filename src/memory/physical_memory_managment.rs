@@ -14,12 +14,11 @@ const HIGH_MEMORY_START: usize = 0xC0000000; // 3GiB
 
 pub const KERNEL_HEAP_SIZE: usize = 0x100000; // 1MiB TODO MAKE IT VARIABLE
 
-pub static mut KERNEL_SPACE_START: usize = 0;
-pub static mut MEMORY_MAP: usize = 0;
-pub static mut KERNEL_SPACE_END: usize = 0;
-pub static mut USER_SPACE_START: usize = 0;
-pub static mut USER_SPACE_END: usize = 0;
-pub static mut MEMORY_MAP_SIZE: usize = 0;
+pub static mut KERNEL_SPACE_START: u32 = 0;
+pub static mut MEMORY_MAP: u32 = 0;
+pub static mut KERNEL_SPACE_END: u32 = 0;
+pub static mut USER_SPACE_START: u32 = 0;
+pub static mut USER_SPACE_END: u32 = 0;
 
 #[derive(Clone, Copy)]
 pub struct MemoryRegion {
@@ -144,6 +143,16 @@ impl PhysicalMemoryManager {
 		(self.memory_map[index] & (1 << offset)) != 0
 	}
 
+	pub fn nmap_test_address(&mut self, address: u32) -> bool {
+		let bit = address / PMMNGR_BLOCK_SIZE;
+		self.mmap_test(bit)
+	}
+
+	pub fn nmap_test_address(&mut self, address: u32) -> bool {
+		let bit = address / PMMNGR_BLOCK_SIZE;
+		self.mmap_test(bit)
+	}
+
 	fn mmap_first_free(&mut self) -> usize {
 		for i in 0..self.max_blocks / 32 {
 			if self.memory_map[i] != 0xffffffff {
@@ -201,31 +210,10 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	pub fn free_frame(&mut self, address: usize) {
+	pub fn deallocate_frame(&mut self, address: u32) {
 		if self.is_address_usable(address) {
 			self.mmap_unset(address / PMMNGR_BLOCK_SIZE);
 		}
-	}
-
-	fn init_available_memory(&mut self, mmap: &MultibootMemoryMapTag) {
-		for i in 0..(mmap.size - mmap.entry_size) / mmap.entry_size {
-			let entry: &MultibootMemoryMapEntry = unsafe { &*mmap.entries.as_ptr().add(i as usize) };
-			if entry.entry_type == 1 {
-				self.init_region(entry.address as usize, entry.len as usize);
-			}
-		}
-	}
-
-	fn print_values(&self) {
-		println_serial!(
-			"Physical memory manager: {} blocks available",
-			self.max_blocks
-		);
-		println_serial!("Physical memory manager: {} blocks used", self.used_blocks);
-		println_serial!(
-			"Physical memory manager: {:p} memory map address",
-			self.memory_map
-		);
 	}
 
 	fn process_memory_map(&mut self) {
@@ -272,7 +260,10 @@ impl PhysicalMemoryManager {
 
 	pub fn print_memory_map(&self) {
 		println_serial!("Memory Map:");
-		for index in 0..(self.memory_map_size) {
+		for index in 0..(self.memory_map_size as usize) {
+			if index < 38 || index > 46 {
+				continue;
+			}
 			let block = self.memory_map[index]; // Access the block directly using index
 
 			let mut bits: [char; 32] = ['0'; 32];
@@ -326,10 +317,10 @@ pub fn physical_memory_manager_init() {
 
 	pmm.process_memory_map();
 	pmm.init();
-	// unsafe {
-	// 	kmalloc_init();
-	// }
-	pmm.print_memory_map();
+	unsafe {
+		kmalloc_init();
+	}
+	//pmm.print_memory_map();
 }
 
 pub fn physical_address_is_valid(phys_addr: usize) -> bool {
