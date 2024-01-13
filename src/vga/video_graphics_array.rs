@@ -27,7 +27,7 @@ const NUM_SCREENS: usize = 5;
 const SERIAL_SCREEN: usize = 4;
 const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS;
 
-const VGA_BUFFER_ADDRESS: usize = 0xc00b8000;
+const VGA_BUFFER_ADDRESS: usize = 0xb8000;
 pub const VGA_COLUMNS: usize = 80;
 const VGA_ROWS: usize = 25;
 pub const VGA_LAST_LINE: usize = VGA_ROWS - 1;

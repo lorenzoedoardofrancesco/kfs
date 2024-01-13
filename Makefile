@@ -90,14 +90,14 @@ check-checksums:
 
 run: all
 	@if [ -f $(ISO_FILE) ]; then \
-		qemu-system-i386 -drive file=kfs.iso,format=raw,index=0,media=disk -m 64 -serial file:output.log -serial stdio -display curses; \
+		qemu-system-i386 -drive file=kfs.iso,format=raw,index=0,media=disk -m 4096 -serial file:output.log -serial stdio -display curses; \
 	else \
 		echo "No $(ISO_FILE) found, please run 'make' first."; \
 	fi
 
 debug: all
 	@if [ -f $(ISO_FILE) ]; then \
-		qemu-system-i386 -drive file=kfs.iso,format=raw,index=0,media=disk -s -S -m 64 -serial file:output.log -serial stdio -display curses; \
+		qemu-system-i386 -drive file=kfs.iso,format=raw,index=0,media=disk -s -S -m 4096 -serial file:output.log -serial stdio -display curses; \
 	else \
 		echo "No $(ISO_FILE) found, please run 'make' first."; \
 	fi

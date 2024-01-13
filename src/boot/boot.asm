@@ -3,11 +3,17 @@ extern _start
 extern _kernel_start
 extern _kernel_end
 
+section .multiboot_header
+align 4
+dd 0xE85250D6              ; magic number
+dd 0                      ; flags
+dd - (0xE85250D6 + 0)     ; checksum (magic number + flags + checksum should equal 0)
+
 ; Allocate the initial stack.
 section .bootstrap_stack
 align 16
 stack_bottom:
-times 16384 db 0 ; 16 KiB
+times 65536 db 0
 stack_top:
 
 ; Preallocate pages used for paging. Don't hard-code addresses and assume they

@@ -1,35 +1,33 @@
-HIGHER_HALF_OFFSET = 0xC0000000;
+ENTRY (_start)
 
-ENTRY(start)
+SECTIONS
+{
+	.boot : {
+		*(.boot)
+		*(.multiboot_header)
+	}
 
-SECTIONS {
-    /* Place the Multiboot header at the very start of the kernel */
-    .boot : {
-        KEEP(*(.multiboot_header))
-    }
+	. += 0x00000000 + 1M;
+	_kernel_start = .;
 
-    /* Define the start of the kernel in the higher half */
-    . = HIGHER_HALF_OFFSET + 1M;
-    _kernel_start = .;
-
-    /* Place the text section after the kernel start */
-    .text ALIGN(4K) : AT(ADDR(.text) - HIGHER_HALF_OFFSET) {
-        *(.text .text.*)
-    }
-
-    /* Place other sections */
-    .rodata ALIGN(4K) : AT(ADDR(.rodata) - HIGHER_HALF_OFFSET) {
-        *(.rodata .rodata.*)
-    }
-
-    .data ALIGN(4K) : AT(ADDR(.data) - HIGHER_HALF_OFFSET) {
-        *(.data .data.*)
-    }
-
-    .bss ALIGN(4K) : AT(ADDR(.bss) - HIGHER_HALF_OFFSET) {
-        *(.bss .bss.*)
-        *(COMMON)
+	.text ALIGN (4K) : AT (ADDR (.text) - 0x00000000)
+	{
+		*(.text)
+	}
+	.rodata ALIGN (4K) : AT (ADDR (.rodata) - 0x00000000)
+	{
+		*(.rodata)
+	}
+	.data ALIGN (4K) : AT (ADDR (.data) - 0x00000000)
+	{
+		*(.data)
+	}
+	.bss ALIGN (4K) : AT (ADDR (.bss) - 0x00000000)
+	{
+		*(COMMON)
+		*(.bss)
 		*(.bootstrap_stack)
-    }
-    _kernel_end = .;
+	}
+	/* Add a symbol that indicates the end address of the kernel. */
+	_kernel_end = .;
 }
