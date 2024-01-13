@@ -56,12 +56,13 @@ mod utils;
 mod vga;
 
 use boot::multiboot;
-use memory::physical_memory_managment::PMM;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
+use memory::physical_memory_managment::PMM;
 use structures::{gdt, idt};
 use utils::{debug, librs::hlt};
 use vga::parrot::animate_parrot;
+use shell::prints;
 
 /// The kernel's main entry function.
 ///
@@ -73,14 +74,14 @@ use vga::parrot::animate_parrot;
 /// * `multiboot_magic` - The magic number passed by the bootloader.
 /// * `multiboot_addr` - The address of the multiboot info structure.
 #[no_mangle]
-pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
+pub extern "C" fn _start(multiboot_magic: usize, multiboot_addr: usize) -> ! {
 	init(multiboot_magic, multiboot_addr);
 	//unsafe { core::arch::asm!("mov dx, 0; div dx") };
 	//crate::memory::kmalloc::kmalloc_tester();
 	//PMM.lock().print_memory_map();
 	unsafe {
-		memory_management_tester();
-		PMM.lock().print_memory_map();	
+		//memory_management_tester();
+		PMM.lock().print_memory_map();
 	}
 	loop {
 		process_keyboard_input();
@@ -102,40 +103,40 @@ fn panic(info: &PanicInfo) -> ! {
 ///
 /// Sets up serial port communication for debugging, validates the multiboot header,
 /// initializes the GDT, IDT, and interrupts, and displays a welcome message.
-fn init(multiboot_magic: u32, multiboot_addr: u32) {
-	multiboot::validate_multiboot(multiboot_magic, multiboot_addr);
+fn init(multiboot_magic: usize, multiboot_addr: usize) {
+	//multiboot::validate_multiboot(multiboot_magic, multiboot_addr);
+	debug::init_serial_port();
 	gdt::init();
 	idt::init();
+	//multiboot::read_multiboot_info(multiboot_addr);
+	//memory::physical_memory_managment::physical_memory_manager_init();
+	//memory::page_directory::init_pages();
 	interrupts::init();
-	debug::init_serial_port();
-	multiboot::read_multiboot_info(multiboot_addr);
-	memory::physical_memory_managment::physical_memory_manager_init();
-	memory::page_directory::init_pages();
-	//prints::print_welcome_message();
+	prints::print_welcome_message();
 }
 
-pub unsafe fn memory_management_tester() {
-	// Allocate a small block of memory
-	let address1 = crate::memory::kmalloc::kmalloc(1024);
-	println_serial!("Allocated 1024 bytes at {:?}", address1);
+// pub unsafe fn memory_management_tester() {
+// 	// Allocate a small block of memory
+// 	let address1 = crate::memory::kmalloc::kmalloc(1024);
+// 	println_serial!("Allocated 1024 bytes at {:?}", address1);
 
-	// Allocate a larger block of memory
-	let address2 = crate::memory::kmalloc::kmalloc(4096).unwrap() as *mut u32;
-	println_serial!("Allocated 4096 bytes at {:?}", address2);
+// 	// Allocate a larger block of memory
+// 	let address2 = crate::memory::kmalloc::kmalloc(4096).unwrap() as *mut usize;
+// 	println_serial!("Allocated 4096 bytes at {:?}", address2);
 
-	// Deallocate the first block
-	crate::memory::kmalloc::kfree(address1.unwrap());
-	println_serial!("Freed memory at {:?}", address1);
+// 	// Deallocate the first block
+// 	crate::memory::kmalloc::kfree(address1.unwrap());
+// 	println_serial!("Freed memory at {:?}", address1);
 
-	// Allocate another block to see if freed memory is reused
-	let address3 = crate::memory::kmalloc::kmalloc(512);
-	println_serial!("Allocated 512 bytes at {:?}", address3);
+// 	// Allocate another block to see if freed memory is reused
+// 	let address3 = crate::memory::kmalloc::kmalloc(512);
+// 	println_serial!("Allocated 512 bytes at {:?}", address3);
 
-	// Additional checks can be performed here...
-	*address2 = 0xdeadbeef;
-	let miaomiao = address2.add(0x1000);
-	miaomiao.write_volatile(0xdeadbeef);
+// 	// Additional checks can be performed here...
+// 	*address2 = 0xdeadbeef;
+// 	let miaomiao = address2.add(0x1000);
+// 	miaomiao.write_volatile(0xdeadbeef);
 
-	println!("address2: {:#010X}", address2 as usize);
-	println!("miao: {:#010X}", miaomiao as usize);
-}
+// 	println!("address2: {:#010X}", address2);
+// 	println!("miao: {:#010X}", miaomiao);
+// }

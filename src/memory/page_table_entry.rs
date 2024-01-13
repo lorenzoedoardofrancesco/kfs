@@ -3,7 +3,7 @@ use crate::memory::physical_memory_managment::PMM;
 use bitflags::bitflags;
 
 bitflags! {
-	pub struct PageTableFlags: u32 {
+	pub struct PageTableFlags: usize {
 		const PRESENT = 0b1;
 		const WRITABLE = 0b10;
 		const USER = 0b100;
@@ -21,7 +21,7 @@ bitflags! {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct PageTableEntry {
-	value: u32,
+	pub value: usize,
 }
 
 impl PageTableEntry {
@@ -29,10 +29,8 @@ impl PageTableEntry {
 		PageTableEntry { value: 0 }
 	}
 
-	pub fn new_from_address(address: u32, flags: PageTableFlags) -> Self {
-		PageTableEntry {
-			value: address | flags.bits(),
-		}
+	pub fn new_from_address(&mut self, address: usize, flags: PageTableFlags) {
+		self.value = address | flags.bits();
 	}
 
 	pub fn alloc_new() -> Result<Self, &'static str> {
@@ -58,8 +56,8 @@ impl PageTableEntry {
 
 	/// Sets the frame address for this entry.
 	/// Ensure that the address is correctly aligned and doesn't interfere with flags.
-	pub fn set_frame_address(&mut self, frame: u32) -> Result<(), &'static str> {
-		if frame % PAGE_SIZE as u32 != 0 {
+	pub fn set_frame_address(&mut self, frame: usize) -> Result<(), &'static str> {
+		if frame % PAGE_SIZE != 0 {
 			return Err("Frame address is misaligned");
 		}
 		let frame_address = frame & PageTableFlags::FRAME.bits();
@@ -78,11 +76,11 @@ impl PageTableEntry {
 	}
 
 	/// Returns the frame address for this entry.
-	pub fn frame(&self) -> u32 {
+	pub fn frame(&self) -> usize {
 		self.value & PageTableFlags::FRAME.bits()
 	}
 
 	pub fn is_unused(&self) -> bool {
-		true   // TODO implement the used/unused 
+		true // TODO implement the used/unused
 	}
 }

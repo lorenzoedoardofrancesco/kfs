@@ -111,7 +111,7 @@ fn uname() {
 ///
 /// Prints the current CPU mode (Real or Protected) along with the value of CR0.
 fn cmd_mode() {
-	let cr0: u32;
+	let cr0: usize;
 	unsafe {
 		core::arch::asm!("mov {}, cr0", out(reg) cr0, options(nostack, preserves_flags));
 	}
@@ -130,7 +130,7 @@ fn cmd_mode() {
 /// Prints the value of CR0.
 ///
 /// Prints the value of CR0 and the meaning of each flag.
-fn describe_cr0(cr0: u32) {
+fn describe_cr0(cr0: usize) {
 	log!(LogLevel::Info, "CR0 Register: 0b{:032b}", cr0);
 	println!("CR0 Register: 0b{:032b}", cr0);
 
@@ -162,10 +162,10 @@ fn describe_cr0(cr0: u32) {
 fn cpu_info() {
 	let mut cpu_vendor = [0u8; 12];
 	let mut cpu_brand = [0u8; 48];
-	let mut eax: u32 = 0;
-	let mut ebx: u32 = 0;
-	let mut ecx: u32 = 0;
-	let mut edx: u32 = 0;
+	let mut eax: usize = 0;
+	let mut ebx: usize = 0;
+	let mut ecx: usize = 0;
+	let mut edx: usize = 0;
 
 	// Get CPU Vendor
 	get_cpuid(0, &mut eax, &mut ebx, &mut ecx, &mut edx);
@@ -176,7 +176,7 @@ fn cpu_info() {
 	// Get CPU Brand
 	for i in 0x80000002..=0x80000004 {
 		get_cpuid(i, &mut eax, &mut ebx, &mut ecx, &mut edx);
-		let offset = (i - 0x80000002) as usize * 16;
+		let offset = (i - 0x80000002) * 16;
 		cpu_brand[offset..offset + 4].copy_from_slice(&eax.to_ne_bytes());
 		cpu_brand[offset + 4..offset + 8].copy_from_slice(&ebx.to_ne_bytes());
 		cpu_brand[offset + 8..offset + 12].copy_from_slice(&ecx.to_ne_bytes());
@@ -193,7 +193,7 @@ fn cpu_info() {
 /// Gets CPU information using the CPUID instruction.
 ///
 /// This function uses the CPUID instruction to get information about the CPU.
-fn get_cpuid(info_type: u32, eax: &mut u32, ebx: &mut u32, ecx: &mut u32, edx: &mut u32) {
+fn get_cpuid(info_type: usize, eax: &mut usize, ebx: &mut usize, ecx: &mut usize, edx: &mut usize) {
 	unsafe {
 		core::arch::asm!(
 			"cpuid",
@@ -224,7 +224,7 @@ fn show_uptime() {
 }
 
 // Function to manually trigger a syscall for testing purposes
-pub fn trigger_syscall(syscall_number: u32, arg1: u32, arg2: u32, arg3: u32) {
+pub fn trigger_syscall(syscall_number: usize, arg1: usize, arg2: usize, arg3: usize) {
 	use crate::exceptions::syscalls::GeneralRegs;
 	let mut regs = GeneralRegs {
 		eax: syscall_number, // Syscall number
@@ -259,10 +259,10 @@ fn test_syscall(line: &str) {
 		return;
 	}
 
-	let syscall_number = parts[1].parse::<u32>().unwrap_or(0);
-	let arg1 = parts[2].parse::<u32>().unwrap_or(0);
-	let arg2 = parts[3].parse::<u32>().unwrap_or(0);
-	let arg3 = parts[4].parse::<u32>().unwrap_or(0);
+	let syscall_number = parts[1].parse::<usize>().unwrap_or(0);
+	let arg1 = parts[2].parse::<usize>().unwrap_or(0);
+	let arg2 = parts[3].parse::<usize>().unwrap_or(0);
+	let arg3 = parts[4].parse::<usize>().unwrap_or(0);
 
 	trigger_syscall(syscall_number, arg1, arg2, arg3);
 }

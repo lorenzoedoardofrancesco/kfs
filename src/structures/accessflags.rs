@@ -4,9 +4,9 @@
 //! and Section 3.5 "System Descriptor Types"
 
 /// Maximum segment size
-pub const MAX_SEGMENT_SIZE: u32 = 0xfffff;
+pub const MAX_SEGMENT_SIZE: usize = 0xfffff;
 /// No offset
-pub const NO_OFFSET: u32 = 0;
+pub const NO_OFFSET: usize = 0;
 
 /// Returns the access flags for a null segment.
 pub const NULL_SEGMENT: u8 = 0;

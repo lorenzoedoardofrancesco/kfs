@@ -70,21 +70,21 @@ pub fn print_stack(line: &str, mode: PrintStackMode) {
 	// Determine the address to use for the hex dump
 	let address = match parts.next() {
 		Some("esp") => {
-			let esp: u32;
+			let esp: usize;
 			unsafe {
 				core::arch::asm!("mov {}, esp", out(reg) esp);
 			}
 			esp
 		}
-		Some("gdt") => &GDT as *const _ as u32,
+		Some("gdt") => &GDT as *const _ as usize,
 		Some("idt") => {
-			let offset: u32;
+			let offset: usize;
 			unsafe {
-				offset = &IDT as *const _ as u32;
+				offset = &IDT as *const _ as usize;
 			}
 			offset
 		}
-		Some(addr_str) => u32::from_str_radix(addr_str, 16).unwrap_or(0),
+		Some(addr_str) => usize::from_str_radix(addr_str, 16).unwrap_or(0),
 		None => 0,
 	};
 

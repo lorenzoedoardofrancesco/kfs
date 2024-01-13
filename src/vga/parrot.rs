@@ -29,8 +29,8 @@ pub fn animate_parrot() {
 	let activated: bool = PARROT_ACTIVATED.load(Ordering::SeqCst);
 
 	if activated {
-		let frame_index = PARROT_FRAME.fetch_add(1, Ordering::SeqCst) as usize;
-		let frame = &PARROT[frame_index % PARROT.len()];
+		let frame_index = PARROT_FRAME.fetch_add(1, Ordering::SeqCst);
+		let frame = &PARROT[frame_index as usize % PARROT.len()];
 
 		print_top!("{:320}{}{:240}", " ", frame, " ");
 		video_graphics_array::change_color(true);

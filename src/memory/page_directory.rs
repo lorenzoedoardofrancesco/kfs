@@ -1,10 +1,11 @@
-use crate::memory::{page_table::PageTable, page_table_entry::PageTableFlags};
+use crate::memory::{page_directory, page_table};
+use crate::memory::{
+	page_table::PageTable, page_table_entry::PageTableEntry, page_table_entry::PageTableFlags,
+};
+use crate::vga::prompt::tab;
 use bitflags::bitflags;
 use core::arch::asm;
-use core::ptr::null_mut;
 use core::sync::atomic::{AtomicPtr, Ordering};
-
-use super::page_table;
 
 /// Constants defining the page size and the number of entries in a page table.
 /// The page size is 4 KiB and the number of entries in a page table is 1024.
@@ -15,15 +16,22 @@ pub const PAGE_TABLE_SIZE: usize = ENTRY_COUNT * PAGE_SIZE;
 // Constants for memory addresses reserved for paging structures
 /// TODO: Make these constants dynamic and in the kernel space (heap???)
 
-pub static mut PAGE_DIRECTORY_ADDR: u32 = 0;
-pub static mut PAGE_TABLES_ADDR: u32 = 0;
+pub static mut PAGE_DIRECTORY_ADDR: usize = 0;
+pub static mut PAGE_TABLES_ADDR: usize = 0;
 
-// Static references to the page directory and tables using AtomicPtr
-pub static mut PAGE_DIRECTORY: AtomicPtr<PageDirectory> = AtomicPtr::new(null_mut());
-pub static mut PAGE_TABLES: AtomicPtr<[PageTable; ENTRY_COUNT]> = AtomicPtr::new(null_mut());
+pub static mut PAGE_DIRECTORY: PageDirectory = PageDirectory {
+	entries: [PageDirectoryEntry { value: 0 }; ENTRY_COUNT],
+};
+pub static mut PAGE_TABLES: [PageTable; ENTRY_COUNT] = [PageTable {
+	entries: [PageTableEntry { value: 0 }; ENTRY_COUNT],
+}; ENTRY_COUNT];
+
+pub static mut PAGE_TABLE_BOOT: PageTable = PageTable {
+	entries: [PageTableEntry { value: 0 }; ENTRY_COUNT],
+};
 
 bitflags! {
-	pub struct PageDirectoryFlags: u32 {
+	pub struct PageDirectoryFlags: usize {
 		const PRESENT       = 0b1;
 		const WRITABLE      = 0b10;
 		const USER          = 0b100;
@@ -41,7 +49,7 @@ bitflags! {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct PageDirectoryEntry {
-	value: u32,
+	value: usize,
 }
 
 impl PageDirectoryEntry {
@@ -60,19 +68,19 @@ impl PageDirectoryEntry {
 	}
 
 	// Sets up a PageTable for this directory entry
-	pub fn set(&mut self, frame: u32, flags: PageTableFlags) {
-		self.set_address(frame);
+	pub fn set(&mut self, page_table: &PageTable, flags: PageTableFlags) {
+		self.set_address(page_table as *const _ as usize);
 		self.set_flags(flags | PageTableFlags::PRESENT);
 	}
 
 	// Sets the frame address for this directory entry
-	pub fn set_address(&mut self, frame: u32) {
-		let frame_addr = (frame & PageDirectoryFlags::FRAME.bits()) as u32;
-		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | frame_addr;
+	pub fn set_address(&mut self, page_table: usize) {
+		let page_table_addr = page_table & PageDirectoryFlags::FRAME.bits();
+		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | page_table_addr;
 	}
 
 	// Gets the frame address from this directory entry
-	pub fn address(&self) -> u32 {
+	pub fn address(&self) -> usize {
 		self.value & PageDirectoryFlags::FRAME.bits()
 	}
 
@@ -85,8 +93,8 @@ impl PageDirectoryEntry {
 	pub fn flags(&self) -> PageTableFlags {
 		PageTableFlags::from_bits_truncate(self.value)
 	}
-	
-	pub fn set_frame(&mut self, frame: u32) {
+
+	pub fn set_frame(&mut self, frame: usize) {
 		let frame_addr = frame & PageDirectoryFlags::FRAME.bits();
 		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | frame_addr;
 	}
@@ -108,10 +116,10 @@ pub struct PageDirectory {
 }
 
 impl PageDirectory {
-	pub fn map(&mut self, virtual_address: u32, frame: u32, flags: PageDirectoryFlags) {
+	pub fn map(&mut self, virtual_address: usize, frame: usize, flags: PageDirectoryFlags) {
 		let index = (virtual_address >> 22) & 0x3ff;
 		let table_index = (virtual_address >> 12) & 0x3ff;
-		let entry = &mut self.entries[index as usize];
+		let entry = &mut self.entries[index];
 		entry.add_attribute(flags);
 		let page_table = entry.get_page_table().unwrap();
 		let page_table_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
@@ -119,7 +127,7 @@ impl PageDirectory {
 	}
 
 	/// Adds or updates a mapping in the page directory.
-	pub fn add_entry(&mut self, index: usize, frame: u32, flags: PageDirectoryFlags) {
+	pub fn add_entry(&mut self, index: usize, frame: usize, flags: PageDirectoryFlags) {
 		let entry = &mut self.entries[index];
 		entry.set_frame(frame);
 		entry.add_attribute(flags);
@@ -145,41 +153,41 @@ impl PageDirectory {
 pub fn enable_paging() {
 	unsafe {
 		asm!("mov cr3, {}", in(reg) PAGE_DIRECTORY_ADDR);
-		let mut cr0: u32;
+		let mut cr0: usize;
 		asm!("mov {}, cr0", out(reg) cr0);
 		cr0 |= 0x80000000; // Set the PG bit to enable paging
 		asm!("mov cr0, {}", in(reg) cr0);
 	}
 }
 
-pub fn init_pages() {
-	use crate::memory::physical_memory_managment::PMM;
-	unsafe {
-		PAGE_DIRECTORY = AtomicPtr::new(PAGE_DIRECTORY_ADDR as *mut PageDirectory);
-		PAGE_TABLES = AtomicPtr::new(PAGE_TABLES_ADDR as *mut [PageTable; ENTRY_COUNT]);
-		// Convert raw pointers to mutable references
-		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
-		let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
+// pub fn init_pages() {
+// 	use crate::memory::physical_memory_managment::PMM;
+// 	unsafe {
+// 		PAGE_DIRECTORY = AtomicPtr::new(PAGE_DIRECTORY_ADDR as *mut PageDirectory);
+// 		PAGE_TABLES = AtomicPtr::new(PAGE_TABLES_ADDR as *mut [PageTable; ENTRY_COUNT]);
+// 		// Convert raw pointers to mutable references
+// 		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
+// 		let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
 
-		for (i, table) in tables.iter_mut().enumerate() {
-			// Calculate the physical address of this table's entries outside the inner loop
-			let table_phys_addr = table.entries.as_ptr() as u32;
+// 		for (i, table) in tables.iter_mut().enumerate() {
+// 			// Calculate the physical address of this table's entries outside the inner loop
+// 			let table_phys_addr = table.entries.as_ptr();
 
-			for (j, entry) in table.entries.iter_mut().enumerate() {
-				let virt = (i << 22) | (j << 12);
-				let phys = virt as u32;
-				entry.set_frame_address(phys);
-				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-			}
+// 			for (j, entry) in table.entries.iter_mut().enumerate() {
+// 				let virt = (i << 22) | (j << 12);
+// 				let phys = virt;
+// 				entry.set_frame_address(phys);
+// 				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+// 			}
 
-			// Now use the previously calculated physical address
-			directory.add_entry(
-				i,
-				table_phys_addr,
-				PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
-			);
-		}
-	}
-	PMM.lock().update_bitmap_from_memory();
-	enable_paging();
-}
+// 			// Now use the previously calculated physical address
+// 			directory.add_entry(
+// 				i,
+// 				table_phys_addr,
+// 				PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
+// 			);
+// 		}
+// 	}
+// 	PMM.lock().update_bitmap_from_memory();
+// 	enable_paging();
+// }

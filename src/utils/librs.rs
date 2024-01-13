@@ -85,7 +85,7 @@ pub fn hlt() {
 }
 
 /// Performs a hex dump starting from a given memory address.
-pub fn hexdump(mut address: u32, limit: usize, mode: PrintStackMode) {
+pub fn hexdump(mut address: usize, limit: usize, mode: PrintStackMode) {
 	if limit == 0 {
 		return;
 	}
@@ -137,7 +137,7 @@ pub fn hexdump(mut address: u32, limit: usize, mode: PrintStackMode) {
 				PrintStackMode::Serial => print_serial!(" "),
 			}
 		}
-		print_hex_line(address - remaining as u32, remaining, mode);
+		print_hex_line(address - remaining, remaining, mode);
 	} else {
 		print_hex_line(address - 16, 16, mode);
 	}
@@ -149,7 +149,7 @@ pub fn hexdump(mut address: u32, limit: usize, mode: PrintStackMode) {
 }
 
 /// Helper function for printing a line in hex dump format.
-fn print_hex_line(address: u32, count: usize, mode: PrintStackMode) {
+fn print_hex_line(address: usize, count: usize, mode: PrintStackMode) {
 	let bytes = unsafe { core::slice::from_raw_parts(address as *const u8, count) };
 
 	match mode {
@@ -170,4 +170,3 @@ fn print_hex_line(address: u32, count: usize, mode: PrintStackMode) {
 		}
 	}
 }
-

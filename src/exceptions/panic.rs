@@ -36,7 +36,7 @@ pub fn clean_registers() {
 
 pub fn verify_clean_registers() {
 	unsafe {
-		let (eax, ebx, ecx, edx, esi, edi, ebp): (u32, u32, u32, u32, u32, u32, u32);
+		let (eax, ebx, ecx, edx, esi, edi, ebp): (usize, usize, usize, usize, usize, usize, usize);
 
 		asm!(
 			"mov {}, eax",
@@ -76,9 +76,9 @@ pub fn handle_panic<D: Display>(info: &D, stack_frame: Option<&InterruptStackFra
 	}
 
 	unsafe {
-		let stack_start_address = STACK_DUMP.as_ptr() as u32;
-		log!(LogLevel::Info, "Stack dump at {:#x}", stack_start_address);
-		hexdump(stack_start_address, STACK_DUMP_SIZE, PrintStackMode::Serial);
+		let stack_start_address = STACK_DUMP.as_ptr();
+		log!(LogLevel::Info, "Stack dump at {:#x}", stack_start_address as usize);
+		hexdump(stack_start_address as usize, STACK_DUMP_SIZE, PrintStackMode::Serial);
 	}
 
 	println!("See serial output for more information.");

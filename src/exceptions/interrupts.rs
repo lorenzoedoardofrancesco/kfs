@@ -64,18 +64,18 @@ impl InterruptIndex {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-	instruction_pointer: u32,
-	code_segment: u32,
-	cpu_flags: u32,
-	stack_pointer: u32,
-	stack_segment: u32,
-	eax: u32,
-	ebx: u32,
-	ecx: u32,
-	edx: u32,
-	esi: u32,
-	edi: u32,
-	ebp: u32,
+	instruction_pointer: usize,
+	code_segment: usize,
+	cpu_flags: usize,
+	stack_pointer: usize,
+	stack_segment: usize,
+	eax: usize,
+	ebx: usize,
+	ecx: usize,
+	edx: usize,
+	esi: usize,
+	edi: usize,
+	ebp: usize,
 }
 
 /// Handler functions for various interrupts.
