@@ -101,11 +101,11 @@ pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 	if remaining != 0 {
 		size += MIN_ALLOCATION_SIZE - remaining;
 	}
-
+	
 	if size > MAX_ALLOCATION_SIZE {
 		return Err("kmalloc | Attempted to allocate invalid size");
 	}
-
+	
 	let mut current = KERNEL_HEAP_START;
 	while current < KERNEL_HEAP_END {
 		let header = current as *mut KmallocHeader;
@@ -124,7 +124,7 @@ pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 			}
 			// let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
 			// page_directory.map_range(
-			// 	current as u32,
+			// 		current as u32,
 			// 	size,
 			// 	PageDirectoryFlags::WRITABLE,
 			// );
@@ -181,15 +181,26 @@ fn free_empty_pages(ptr: *mut KmallocHeader) {
 
         // Calculate the start and end page numbers
         let start_page_number = page_aligned_start / PAGE_SIZE;
-        let end_page_number = (end_addr + PAGE_SIZE - 1) / PAGE_SIZE;
+        let end_page_number = (end_addr + PAGE_SIZE - 1) / PAGE_SIZE	- 1;
 
         // Calculate the number of pages to unmap
         let num_pages = end_page_number - start_page_number;
+
+		println_serial!("malloc: {:#010X}", ptr as usize);
+		println_serial!("block_size: {:#010X}", block_size);
+		println_serial!("start_addr: {:#010X}", start_addr);
+		println_serial!("page_aligned_start: {:#010X}", page_aligned_start);
+		println_serial!("end_addr: {:#010X}", end_addr);
+		println_serial!("start_page_number: {:#010X}", start_page_number);
+		println_serial!("end_page_number: {:#010X}", end_page_number);
+		println_serial!("num_pages: {:#010X}", num_pages);
+
 
         for i in 0..num_pages {
             let page_to_unmap = (start_page_number + i) * PAGE_SIZE;
             let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
             page_directory.unmap(page_to_unmap as u32);
+			println_serial!("Unmapped page: {:#010X}", page_to_unmap)
         }
     }
 }
@@ -287,7 +298,7 @@ fn kbrk(increment: isize) -> *mut u8 {
 /// # Returns
 ///
 /// The size of the allocated memory block.
-pub unsafe fn ksize(ptr: *mut u8) -> Option<u32> {
+pub unsafe fn ksize(ptr: *mut u8) -> usize {
 	if ptr.is_null() || ptr < KERNEL_HEAP_START || ptr >= KERNEL_HEAP_END {
 		panic!(
 			"ksize | Attempted to get size of invalid pointer: {:#010X}",
@@ -304,7 +315,7 @@ pub unsafe fn ksize(ptr: *mut u8) -> Option<u32> {
 		);
 	}
 
-	Some((*header_ptr).size())
+	(*header_ptr).size() as usize - KMALLOC_HEADER_SIZE
 }
 
 pub fn kmalloc_tester() {
@@ -342,23 +353,75 @@ pub fn kmalloc_tester() {
 	}
 }
 
-pub fn kprint_heap() {
-	unsafe {
-		let mut current = KERNEL_HEAP_START;
-		println_serial!("");
-		println_serial!("Heap Start: {:#010X}", KERNEL_HEAP_START as usize);
-		println_serial!("Heap End: {:#010X}", KERNEL_HEAP_END as usize);
-		println_serial!("Kernel Heap Break: {:#010X}", KERNEL_HEAP_BREAK as usize);
+// pub fn kprint_heap() {
+// 	unsafe {
+// 		let mut current = KERNEL_HEAP_START;
+// 		println_serial!("");
+// 		println_serial!("Heap Start: {:#010X}", KERNEL_HEAP_START as usize);
+// 		println_serial!("Heap End: {:#010X}", KERNEL_HEAP_END as usize);
+// 		println_serial!("Kernel Heap Break: {:#010X}", KERNEL_HEAP_BREAK as usize);
 
-		while current < KERNEL_HEAP_END {
-			let header = current as *mut KmallocHeader;
-			println_serial!(
-				"{x:08X} | size: {s:08X} | used: {u}",
-				x = current as usize,
-				s = (*header).size(),
-				u = (*header).used()
-			);
-			current = current.add((*header).size() as usize);
-		}
-	}
+// 		while current < KERNEL_HEAP_END {
+// 			let header = current as *mut KmallocHeader;
+// 			println_serial!(
+// 				"{x:08X} | size: {s:08X} | used: {u}",
+// 				x = current as usize,
+// 				s = (*header).size(),
+// 				u = (*header).used()
+// 			);
+// 			current = current.add((*header).size() as usize);
+// 		}
+// 	}
+// }
+
+pub fn kprint_heap() {
+    unsafe {
+        let mut current = KERNEL_HEAP_START;
+        // println_serial!("Heap Start: {:#010X}", KERNEL_HEAP_START as usize);
+        // println_serial!("Heap End: {:#010X}", KERNEL_HEAP_END as usize);
+        // println_serial!("Kernel Heap Break: {:#010X}", KERNEL_HEAP_BREAK as usize);
+        // println_serial!("");
+		println_serial!("  Heap dump:");
+
+		let mut spacing = 0;
+        while current < KERNEL_HEAP_BREAK {
+            let mut header = current as *mut KmallocHeader;
+            let total_size = (*header).size();
+            let used = (*header).used();
+            let mut i = 0;
+
+            while i < total_size {
+                // New line and address printing at the start of each 512-byte block
+                if (current as u32 + i) % 512 == 0 {
+                    // if i != 0 {
+                    //     println_serial!(""); // New line for previous block
+                    // }
+                    print_serial!("{:#08X}   ", current as u32 + i);
+                }
+
+                // Print 'M' at the start of a malloc allocation, '1' for used space, '0' for free space
+                if used && i == 0 {
+                    print_serial!("M");
+                } else {
+                    print_serial!("{}", if used { "1" } else { "0" });
+                }
+				
+				i += 32;
+				spacing += 1;
+                // Add spacing for readability every 4 characters
+				if spacing % 16 == 0 {
+					println_serial!(" ");
+				} else if spacing % 4 == 0 {
+                    print_serial!(" ");
+                }
+            }
+
+            current = current.add(total_size as usize);
+            header = current as *mut KmallocHeader;
+            if current as u32 + (*header).size() > KERNEL_HEAP_BREAK as u32 {
+                break;
+            }
+        }
+        println_serial!(""); // New line at the end of the dump
+    }
 }

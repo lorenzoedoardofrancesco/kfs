@@ -118,11 +118,11 @@ impl PageDirectory {
 		page_table.map(table_index, frame, page_table_flags);
 
 		// Print all informations
-		println_serial!("\nPage Directory Mapping");
-		println_serial!("Virtual Address: {:#x}", virtual_address);
-		println_serial!("Physical Address: {:#x}", frame);
-		println_serial!("Index: {:#x}", index);
-		println_serial!("Table Index: {:#x}", table_index);
+		// println_serial!("\nPage Directory Mapping");
+		// println_serial!("Virtual Address: {:#x}", virtual_address);
+		// println_serial!("Physical Address: {:#x}", frame);
+		// println_serial!("Index: {:#x}", index);
+		// println_serial!("Table Index: {:#x}", table_index);
 	}
 
 	pub fn unmap(&mut self, virtual_address: u32) {
@@ -145,7 +145,8 @@ impl PageDirectory {
 			let page_table = &mut self.entries[index as usize].get_page_table().unwrap();
 			let entry = &mut page_table.entries[table_index as usize];
 
-			if !entry.is_present() {
+
+			if PMM.lock().nmap_test_address(address) {
 				// Allocate a new frame if the page is not present
 				entry.alloc_new();
 			}

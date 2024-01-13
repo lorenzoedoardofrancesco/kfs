@@ -143,6 +143,11 @@ impl PhysicalMemoryManager {
 		(self.memory_map[index as usize] & (1 << offset)) != 0
 	}
 
+	pub fn nmap_test_address(&mut self, address: u32) -> bool {
+		let bit = address / PMMNGR_BLOCK_SIZE;
+		self.mmap_test(bit)
+	}
+
 	fn mmap_first_free(&mut self) -> u32 {
 		for i in 0..self.max_blocks / 32 {
 			if self.memory_map[i as usize] != 0xffffffff {
@@ -275,6 +280,9 @@ impl PhysicalMemoryManager {
 	pub fn print_memory_map(&self) {
 		println_serial!("Memory Map:");
 		for index in 0..(self.memory_map_size as usize) {
+			if index < 38 || index > 46 {
+				continue;
+			}
 			let block = self.memory_map[index]; // Access the block directly using index
 
 			let mut bits: [char; 32] = ['0'; 32];
