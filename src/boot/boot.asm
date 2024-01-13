@@ -1,4 +1,3 @@
-global start
 extern _start
 extern _kernel_start
 extern _kernel_end
@@ -29,6 +28,7 @@ boot_page_table:
 
 ; The kernel entry point.
 section .boot
+global start
 start:
 	cli
 	; Physical address of boot_page_table.
@@ -60,7 +60,7 @@ start:
 
 
 .end_mapping:
-    ; Map the page table to both virtual addresses 0x00000000 and 0xC0000000.
+    ; Map the page table to both virtual addresses 0xC0000000 and 0xC0000000.
     mov dword [boot_page_directory - 0xC0000000], boot_page_table - 0xC0000000 + 0x003
     mov dword [boot_page_directory - 0xC0000000 + 768 * 4], boot_page_table - 0xC0000000 + 0x003
 
