@@ -80,7 +80,6 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	//PMM.lock().print_memory_map();
 	unsafe {
 		memory_management_tester();
-		PMM.lock().print_memory_map();	
 	}
 	loop {
 		process_keyboard_input();
@@ -120,22 +119,22 @@ pub unsafe fn memory_management_tester() {
 	println_serial!("Allocated 1024 bytes at {:?}", address1);
 
 	// Allocate a larger block of memory
-	let address2 = crate::memory::kmalloc::kmalloc(4096).unwrap() as *mut u32;
+	let address2 = crate::memory::kmalloc::kmalloc(20000);
 	println_serial!("Allocated 4096 bytes at {:?}", address2);
 
 	// Deallocate the first block
-	crate::memory::kmalloc::kfree(address1.unwrap());
-	println_serial!("Freed memory at {:?}", address1);
 
 	// Allocate another block to see if freed memory is reused
-	let address3 = crate::memory::kmalloc::kmalloc(512);
+	let address3 = crate::memory::kmalloc::kmalloc(10000);
 	println_serial!("Allocated 512 bytes at {:?}", address3);
+	PMM.lock().print_memory_map();	
 
-	// Additional checks can be performed here...
-	*address2 = 0xdeadbeef;
-	let miaomiao = address2.add(0x1000);
-	miaomiao.write_volatile(0xdeadbeef);
+	// Deallocate the second block
+	crate::memory::kmalloc::kfree(address2.unwrap());
 
-	println!("address2: {:#010X}", address2 as usize);
-	println!("miao: {:#010X}", miaomiao as usize);
+	let address4 = crate::memory::kmalloc::kmalloc(10000);
+	PMM.lock().print_memory_map();	
+
+	let address5 = crate::memory::kmalloc::kmalloc(25000);
+
 }

@@ -200,7 +200,7 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	pub fn free_frame(&mut self, address: u32) {
+	pub fn deallocate_frame(&mut self, address: u32) {
 		if self.is_address_usable(address) {
 			self.mmap_unset(address / PMMNGR_BLOCK_SIZE);
 		}
@@ -331,7 +331,7 @@ pub fn physical_memory_manager_init() {
 	unsafe {
 		kmalloc_init();
 	}
-	pmm.print_memory_map();
+	//pmm.print_memory_map();
 }
 
 pub fn physical_address_is_valid(phys_addr: u32) -> bool {

@@ -122,6 +122,12 @@ pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 				(*next_header).set_used(false);
 				(*next_header).set_size(old_size - size);
 			}
+			// let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
+			// page_directory.map_range(
+			// 	current as u32,
+			// 	size,
+			// 	PageDirectoryFlags::WRITABLE,
+			// );
 			return Ok(current.add(KMALLOC_HEADER_SIZE) as *mut u8);
 		}
 		current = current.add((*header).size() as usize);
@@ -150,6 +156,7 @@ pub unsafe fn kfree(ptr: *mut u8) {
 		if header == header_ptr {
 			(*header_ptr).set_used(false);
 			kdefrag();
+			//free_empty_pages(header_ptr);
 			return;
 		}
 		current = current.add((*header).size() as usize);
@@ -159,6 +166,32 @@ pub unsafe fn kfree(ptr: *mut u8) {
 		"kfree | Attempted to free invalid pointer: {:#010X}",
 		ptr as usize
 	);
+}
+
+fn free_empty_pages(ptr: *mut KmallocHeader) {
+    unsafe {
+        let block_size = (*ptr).size();
+        let start_addr = ptr as usize;
+
+        // Calculate the page-aligned start address
+        let page_aligned_start = (start_addr + PAGE_SIZE - 1) & !(PAGE_SIZE - 1);
+
+        // Calculate the end address of the block
+        let end_addr = start_addr + block_size as usize;
+
+        // Calculate the start and end page numbers
+        let start_page_number = page_aligned_start / PAGE_SIZE;
+        let end_page_number = (end_addr + PAGE_SIZE - 1) / PAGE_SIZE;
+
+        // Calculate the number of pages to unmap
+        let num_pages = end_page_number - start_page_number;
+
+        for i in 0..num_pages {
+            let page_to_unmap = (start_page_number + i) * PAGE_SIZE;
+            let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
+            page_directory.unmap(page_to_unmap as u32);
+        }
+    }
 }
 
 pub unsafe fn kdefrag() {
@@ -243,20 +276,6 @@ fn kbrk(increment: isize) -> *mut u8 {
 
 		KERNEL_HEAP_BREAK
 	}
-}
-
-/// Aligns the given address upwards to the nearest multiple of the alignment.
-///
-/// # Arguments
-///
-/// * `addr` - The address to align.
-/// * `align` - The alignment boundary (must be a power of 2).
-///
-/// # Returns
-///
-/// The aligned address.
-fn align_up(addr: usize) -> usize {
-	(addr + PAGE_SIZE as usize - 1) & !(PAGE_SIZE as usize - 1)
 }
 
 /// Get the size of a memory block allocated by kmalloc.
