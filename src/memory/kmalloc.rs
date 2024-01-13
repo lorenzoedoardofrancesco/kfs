@@ -156,7 +156,7 @@ pub unsafe fn kfree(ptr: *mut u8) {
 		if header == header_ptr {
 			(*header_ptr).set_used(false);
 			kdefrag();
-			//free_empty_pages(header_ptr);
+			free_unused_frames();
 			return;
 		}
 		current = current.add((*header).size() as usize);
@@ -221,6 +221,38 @@ pub unsafe fn kdefrag() {
 		} else {
 			header = next_header;
 		}
+	}
+}
+
+fn free_unused_frames() {
+	unsafe {
+		let last_used = get_last_used_address();
+		let next_page = (last_used as usize + PAGE_SIZE) & !(PAGE_SIZE - 1);
+		let mut current = next_page as *mut u8;
+		
+		while current < KERNEL_HEAP_BREAK {
+			PMM.lock().deallocate_frame(current as u32);
+			current = current.add(PAGE_SIZE);
+		}
+
+		KERNEL_HEAP_BREAK = next_page as *mut u8;
+	}
+}
+
+fn get_last_used_address() -> *mut u8 {
+	unsafe {
+		let mut current = KERNEL_HEAP_START;
+		let mut last_used = KERNEL_HEAP_START;
+
+		while current < KERNEL_HEAP_END {
+			let header = current as *mut KmallocHeader;
+			if (*header).used() {
+				last_used = current;
+			}
+			current = current.add((*header).size() as usize);
+		}
+
+		last_used
 	}
 }
 
@@ -316,41 +348,6 @@ pub unsafe fn ksize(ptr: *mut u8) -> usize {
 	}
 
 	(*header_ptr).size() as usize - KMALLOC_HEADER_SIZE
-}
-
-pub fn kmalloc_tester() {
-	unsafe {
-		//kmalloc_init(0x600000 as *mut u8, 0x10000 as u32);
-
-		let a = kmalloc(8).unwrap();
-		//crate::memory::page_directory::init_pages();
-		let b = kmalloc(253).unwrap();
-		let c = kmalloc(1020).unwrap();
-
-		kprint_heap();
-		kfree(b);
-		let d = kmalloc(50).unwrap();
-		kprint_heap();
-		kfree(c);
-		kprint_heap();
-		let y = kmalloc(3000).unwrap();
-		for i in 0..3000 {
-			*y.add(i) = 0x42;
-		}
-		let z = kmalloc(54000).unwrap();
-		*z = 0x55;
-		kfree(y);
-		kprint_heap();
-		kfree(a);
-		kprint_heap();
-		kfree(d);
-		kprint_heap();
-		kfree(z);
-		kprint_heap();
-
-		//let d = kmalloc(12).unwrap();
-		//println!("d: {:#010X}", d as usize);
-	}
 }
 
 // pub fn kprint_heap() {

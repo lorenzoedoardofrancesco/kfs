@@ -17,7 +17,6 @@ pub static mut MEMORY_MAP: u32 = 0;
 pub static mut KERNEL_SPACE_END: u32 = 0;
 pub static mut USER_SPACE_START: u32 = 0;
 pub static mut USER_SPACE_END: u32 = 0;
-pub static mut MEMORY_MAP_SIZE: u32 = 0;
 
 #[derive(Clone, Copy)]
 pub struct MemoryRegion {
@@ -209,28 +208,6 @@ impl PhysicalMemoryManager {
 		if self.is_address_usable(address) {
 			self.mmap_unset(address / PMMNGR_BLOCK_SIZE);
 		}
-	}
-
-	fn init_available_memory(&mut self, mmap: &MultibootMemoryMapTag) {
-		for i in 0..(mmap.size - mmap.entry_size) / mmap.entry_size {
-			let entry: &MultibootMemoryMapEntry =
-				unsafe { &*mmap.entries.as_ptr().add(i as usize) };
-			if entry.entry_type == 1 {
-				self.init_region(entry.address as u32, entry.len as u32);
-			}
-		}
-	}
-
-	fn print_values(&self) {
-		println_serial!(
-			"Physical memory manager: {} blocks available",
-			self.max_blocks
-		);
-		println_serial!("Physical memory manager: {} blocks used", self.used_blocks);
-		println_serial!(
-			"Physical memory manager: {:p} memory map address",
-			self.memory_map
-		);
 	}
 
 	fn process_memory_map(&mut self) {
