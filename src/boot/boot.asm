@@ -1,6 +1,7 @@
 extern _start
 extern _kernel_start
 extern _kernel_end
+extern _paging_end
 
 section .multiboot_header
 align 4
@@ -12,7 +13,7 @@ dd - (0xE85250D6 + 0)     ; checksum (magic number + flags + checksum should equ
 section .bootstrap_stack
 align 16
 stack_bottom:
-times 65536 db 0
+times 32768 db 0
 stack_top:
 
 ; Preallocate pages used for paging. Don't hard-code addresses and assume they
@@ -42,7 +43,7 @@ start:
     ; Only map the kernel.
     cmp esi, 0
     jl .skip_mapping
-    cmp esi, _kernel_end - 0xC0000000
+    cmp esi, _paging_end - 0xC0000000
     jge .end_mapping
 
     ; Map physical address as "present, writable".
@@ -92,13 +93,7 @@ section .text
     ; Set up the stack.
     mov esp, stack_top
 
+	push ebx
+	push eax
     ; Enter the high-level kernel.
     call _start
-
-    ; Infinite loop if the system has nothing more to do.
-    cli
-
-
-halt:               ; halt the CPU by going into an infinite loop (waiting for an interrupt)
-    hlt
-    jmp halt

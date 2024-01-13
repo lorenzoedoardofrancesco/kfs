@@ -74,7 +74,7 @@ use shell::prints;
 /// * `multiboot_magic` - The magic number passed by the bootloader.
 /// * `multiboot_addr` - The address of the multiboot info structure.
 #[no_mangle]
-pub extern "C" fn _start(multiboot_magic: usize, multiboot_addr: usize) -> ! {
+pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	init(multiboot_magic, multiboot_addr);
 	//unsafe { core::arch::asm!("mov dx, 0; div dx") };
 	//crate::memory::kmalloc::kmalloc_tester();
@@ -99,16 +99,17 @@ fn panic(info: &PanicInfo) -> ! {
 	handle_panic(info, None);
 }
 
+const HIGH_KERNEL_OFFSET: u32 = 0xC0000000;  //<<<<<< dans const
 /// Initializes the kernel components.
 ///
 /// Sets up serial port communication for debugging, validates the multiboot header,
 /// initializes the GDT, IDT, and interrupts, and displays a welcome message.
-fn init(multiboot_magic: usize, multiboot_addr: usize) {
-	//multiboot::validate_multiboot(multiboot_magic, multiboot_addr);
+fn init(multiboot_magic: u32, multiboot_addr: u32) {
+	multiboot::validate_multiboot(multiboot_magic, multiboot_addr);
 	debug::init_serial_port();
 	gdt::init();
 	idt::init();
-	//multiboot::read_multiboot_info(multiboot_addr);
+	multiboot::read_multiboot_info(multiboot_addr + HIGH_KERNEL_OFFSET);
 	//memory::physical_memory_managment::physical_memory_manager_init();
 	//memory::page_directory::init_pages();
 	interrupts::init();

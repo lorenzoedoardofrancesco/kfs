@@ -212,7 +212,7 @@ pub fn init() {
 		log!(
 			LogLevel::Info,
 			"IDT successfully loaded at 0x{:08x}",
-			&IDT as *const _ as u32
+			IDT as u32
 		);
 	}
 }

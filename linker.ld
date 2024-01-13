@@ -15,6 +15,7 @@ SECTIONS {
 
     /* Place the Multiboot header at the very start of the kernel */
     .boot 0x1000 : {
+		_multi_boot_header = .;
         KEEP(*(.multiboot_header))
     }
 
@@ -42,4 +43,7 @@ SECTIONS {
 		*(.bootstrap_stack)
     }
     _kernel_end = .;
+
+	. = ALIGN(4M);
+	_paging_end = .;
 }
