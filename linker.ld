@@ -3,8 +3,18 @@ HIGHER_HALF_OFFSET = 0xC0000000;
 ENTRY(start)
 
 SECTIONS {
+	.idt 0x00000000 : {
+		*(.idt)
+		. = ALIGN(0x800);
+	}
+
+	.gdt 0x00000800 : {
+		*(.gdt)
+		. = ALIGN(4);
+	}
+
     /* Place the Multiboot header at the very start of the kernel */
-    .boot : {
+    .boot 0x1000 : {
         KEEP(*(.multiboot_header))
     }
 
