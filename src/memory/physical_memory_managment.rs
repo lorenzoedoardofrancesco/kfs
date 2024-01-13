@@ -1,25 +1,22 @@
 use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag};
-//use crate::memory::kmalloc::kmalloc_init;
-//use crate::memory::kmalloc::{KERNEL_HEAP_END, KERNEL_HEAP_START};
+use crate::memory::kmalloc::kmalloc_init;
+use crate::memory::kmalloc::{KERNEL_HEAP_END, KERNEL_HEAP_START};
 use crate::memory::page_directory::{PAGE_DIRECTORY_ADDR, PAGE_TABLES_ADDR, PAGE_TABLE_SIZE};
 
 use lazy_static::lazy_static;
 use spin::Mutex;
 
 const MAX_REGIONS: usize = 10;
-const PMMNGR_BLOCK_SIZE: usize = 4096; // 4KiB
-const PMMNGR_BLOCKS_PER_INDEX: usize = 32;
-const USED_BLOCK: usize = 0xffffffff;
-const HIGH_MEMORY_START: usize = 0xC0000000; // 3GiB
+const PMMNGR_BLOCK_SIZE: u32 = 4096; // 4KiB
+const PMMNGR_BLOCKS_PER_INDEX: u32 = 32;
+const USED_BLOCK: u32 = 0xffffffff;
+pub const KERNEL_HEAP_SIZE: u32 = 0x100000; // 1MiB TODO MAKE IT VARIABLE
 
-pub const KERNEL_HEAP_SIZE: usize = 0x100000; // 1MiB TODO MAKE IT VARIABLE
-
-pub static mut KERNEL_SPACE_START: usize = 0;
-pub static mut MEMORY_MAP: usize = 0;
-pub static mut KERNEL_SPACE_END: usize = 0;
-pub static mut USER_SPACE_START: usize = 0;
-pub static mut USER_SPACE_END: usize = 0;
-pub static mut MEMORY_MAP_SIZE: usize = 0;
+pub static mut KERNEL_SPACE_START: u32 = 0;
+pub static mut MEMORY_MAP: u32 = 0;
+pub static mut KERNEL_SPACE_END: u32 = 0;
+pub static mut USER_SPACE_START: u32 = 0;
+pub static mut USER_SPACE_END: u32 = 0;
 
 #[derive(Clone, Copy)]
 pub struct MemoryRegion {
@@ -32,19 +29,19 @@ unsafe impl Send for PhysicalMemoryManager {}
 unsafe impl Sync for PhysicalMemoryManager {}
 /// Physical Memory Manager
 pub struct PhysicalMemoryManager {
-	memory_map: &'static mut [usize],
-	used_blocks: usize,
-	max_blocks: usize,
-	memory_map_size: usize,
+	memory_map: &'static mut [u32],
+	used_blocks: u32,
+	max_blocks: u32,
+	memory_map_size: u32,
 	pub usable_regions: [MemoryRegion; MAX_REGIONS],
-	pub memory_size: usize,
+	pub memory_size: u32,
 	pub memory_map_tag: Option<&'static MultibootMemoryMapTag>,
 	pub memory_map_entries: Option<&'static [MultibootMemoryMapEntry]>,
 }
 
 lazy_static! {
 	pub static ref PMM: Mutex<PhysicalMemoryManager> = Mutex::new(PhysicalMemoryManager {
-		memory_map: unsafe { core::slice::from_raw_parts_mut(0 as *mut usize, 0) },
+		memory_map: unsafe { core::slice::from_raw_parts_mut(0 as *mut u32, 0) },
 		used_blocks: 0,
 		max_blocks: 0,
 		memory_map_size: 0,
@@ -69,22 +66,23 @@ impl PhysicalMemoryManager {
 		self.memory_map_size = self.max_blocks / PMMNGR_BLOCKS_PER_INDEX;
 
 		unsafe {
-			KERNEL_SPACE_START = &_kernel_start as *const u8 as usize;
-			MEMORY_MAP = &_kernel_end as *const u8 as usize;
+			KERNEL_SPACE_START = &_kernel_start as *const u8 as u32;
+			MEMORY_MAP = &_kernel_end as *const u8 as u32;
 			PAGE_DIRECTORY_ADDR = align_up(MEMORY_MAP + self.memory_map_size);
 			PAGE_TABLES_ADDR = PAGE_DIRECTORY_ADDR + 0x1000;
-			//	KERNEL_HEAP_START = (PAGE_TABLES_ADDR + PAGE_TABLE_SIZE + 0x1000) as *mut u8;
-			//	KERNEL_HEAP_END = KERNEL_HEAP_START.wrapping_add(KERNEL_HEAP_SIZE);
-			//	KERNEL_SPACE_END = KERNEL_HEAP_END;
+			KERNEL_HEAP_START = (PAGE_TABLES_ADDR + PAGE_TABLE_SIZE as u32 + 0x1000) as *mut u8;
+			KERNEL_HEAP_END = KERNEL_HEAP_START.wrapping_add(KERNEL_HEAP_SIZE as usize);
+			KERNEL_SPACE_END = KERNEL_HEAP_END as u32;
 			USER_SPACE_START = KERNEL_SPACE_END;
-			USER_SPACE_END = self.usable_regions[1].start_address + self.usable_regions[1].size;
+			USER_SPACE_END =
+				self.usable_regions[1].start_address as u32 + self.usable_regions[1].size as u32;
 
 			println_serial!("Kernel space start: {:#x}", KERNEL_SPACE_START);
 			println_serial!("Memory map address: {:#x}", MEMORY_MAP);
 			println_serial!("Page directory address: {:#x}", PAGE_DIRECTORY_ADDR);
 			println_serial!("Page tables address: {:#x}", PAGE_TABLES_ADDR);
-			//	println_serial!("Kernel heap start: {:#x}", KERNEL_HEAP_START);
-			//	println_serial!("Kernel heap end: {:#x}", KERNEL_HEAP_END);
+			println_serial!("Kernel heap start: {:#x}", KERNEL_HEAP_START as u32);
+			println_serial!("Kernel heap end: {:#x}", KERNEL_HEAP_END as u32);
 			println_serial!("Kernel space end: {:#x}", KERNEL_SPACE_END);
 			println_serial!("User space start: {:#x}", USER_SPACE_START);
 			println_serial!("User space end: {:#x}", USER_SPACE_END);
@@ -96,12 +94,12 @@ impl PhysicalMemoryManager {
 		);
 		self.memory_map = unsafe {
 			core::slice::from_raw_parts_mut(
-				&_kernel_end as *const u8 as *mut usize,
-				self.memory_map_size,
+				&_kernel_end as *const u8 as *mut u32,
+				self.memory_map_size as usize,
 			)
 		};
 
-		for i in 0..self.memory_map_size {
+		for i in 0..self.memory_map_size as usize {
 			self.memory_map[i] = USED_BLOCK;
 		}
 		self.used_blocks = self.max_blocks;
@@ -112,44 +110,49 @@ impl PhysicalMemoryManager {
 			if region.size == 0 {
 				break;
 			}
-			self.init_region(region.start_address, region.size);
+			self.init_region(region.start_address as u32, region.size as u32);
 		}
 	}
 
 	/// Sets a bit in the memory map.
-	fn mmap_set(&mut self, bit: usize) {
+	fn mmap_set(&mut self, bit: u32) {
 		let index = bit / 32;
 		let offset = bit % 32;
-		self.memory_map[index] |= 1 << offset;
+		self.memory_map[index as usize] |= 1 << offset;
 		self.used_blocks += 1;
 	}
 
 	/// Unsets a bit in the memory map.
-	fn mmap_unset(&mut self, bit: usize) {
+	fn mmap_unset(&mut self, bit: u32) {
 		let index = bit / 32;
 		let offset = bit % 32;
-		self.memory_map[index] &= !(1 << offset);
+		self.memory_map[index as usize] &= !(1 << offset);
 		self.used_blocks -= 1;
 	}
 
-	fn mmap_unset_address(&mut self, address: usize) {
+	fn mmap_unset_address(&mut self, address: u32) {
 		let bit = address / PMMNGR_BLOCK_SIZE;
 		self.mmap_unset(bit);
 	}
 
 	/// Tests if a bit is set.
-	fn mmap_test(&mut self, bit: usize) -> bool {
+	fn mmap_test(&mut self, bit: u32) -> bool {
 		let index = bit / 32;
 		let offset = bit % 32;
-		(self.memory_map[index] & (1 << offset)) != 0
+		(self.memory_map[index as usize] & (1 << offset)) != 0
 	}
 
-	fn mmap_first_free(&mut self) -> usize {
+	pub fn nmap_test_address(&mut self, address: u32) -> bool {
+		let bit = address / PMMNGR_BLOCK_SIZE;
+		self.mmap_test(bit)
+	}
+
+	fn mmap_first_free(&mut self) -> u32 {
 		for i in 0..self.max_blocks / 32 {
-			if self.memory_map[i] != 0xffffffff {
+			if self.memory_map[i as usize] != 0xffffffff {
 				for j in 0..32 {
-					let bit: usize = 1 << j;
-					if (self.memory_map[i] & bit) == 0 {
+					let bit: u32 = 1 << j;
+					if (self.memory_map[i as usize] & bit) == 0 {
 						return i * 32 + j;
 					}
 				}
@@ -158,8 +161,8 @@ impl PhysicalMemoryManager {
 		0
 	}
 
-	/// Initializes a region of memory for use. Needs address usize and size in bytes.
-	fn init_region(&mut self, region_address: usize, region_size: usize) {
+	/// Initializes a region of memory for use. Needs address u32 and size in bytes.
+	fn init_region(&mut self, region_address: u32, region_size: u32) {
 		let start_block = region_address / PMMNGR_BLOCK_SIZE;
 		let mut blocks = region_size / PMMNGR_BLOCK_SIZE;
 
@@ -172,7 +175,7 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	fn unset_region(&mut self, region_address: usize, region_size: usize) {
+	fn unset_region(&mut self, region_address: u32, region_size: u32) {
 		let start_block = region_address / PMMNGR_BLOCK_SIZE;
 		let mut blocks = region_size / PMMNGR_BLOCK_SIZE;
 
@@ -186,7 +189,7 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	pub fn allocate_frame(&mut self) -> Result<usize, &'static str> {
+	pub fn allocate_frame(&mut self) -> Result<u32, &'static str> {
 		if self.used_blocks >= self.max_blocks {
 			return Err("Out of memory");
 		}
@@ -201,31 +204,10 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	pub fn free_frame(&mut self, address: usize) {
+	pub fn deallocate_frame(&mut self, address: u32) {
 		if self.is_address_usable(address) {
 			self.mmap_unset(address / PMMNGR_BLOCK_SIZE);
 		}
-	}
-
-	fn init_available_memory(&mut self, mmap: &MultibootMemoryMapTag) {
-		for i in 0..(mmap.size - mmap.entry_size) / mmap.entry_size {
-			let entry: &MultibootMemoryMapEntry = unsafe { &*mmap.entries.as_ptr().add(i as usize) };
-			if entry.entry_type == 1 {
-				self.init_region(entry.address as usize, entry.len as usize);
-			}
-		}
-	}
-
-	fn print_values(&self) {
-		println_serial!(
-			"Physical memory manager: {} blocks available",
-			self.max_blocks
-		);
-		println_serial!("Physical memory manager: {} blocks used", self.used_blocks);
-		println_serial!(
-			"Physical memory manager: {:p} memory map address",
-			self.memory_map
-		);
 	}
 
 	fn process_memory_map(&mut self) {
@@ -257,13 +239,15 @@ impl PhysicalMemoryManager {
 			}
 		}
 
-		self.memory_size = memory_map_entries.last().unwrap().address as usize
-			+ memory_map_entries.last().unwrap().len as usize;
+		self.memory_size = memory_map_entries.last().unwrap().address as u32
+			+ memory_map_entries.last().unwrap().len as u32;
 	}
 
-	fn is_address_usable(&self, address: usize) -> bool {
+	fn is_address_usable(&self, address: u32) -> bool {
 		for region in self.usable_regions.iter() {
-			if address >= region.start_address && address <= region.start_address + region.size {
+			if address >= region.start_address as u32
+				&& address <= region.start_address as u32 + region.size as u32
+			{
 				return true;
 			}
 		}
@@ -272,7 +256,10 @@ impl PhysicalMemoryManager {
 
 	pub fn print_memory_map(&self) {
 		println_serial!("Memory Map:");
-		for index in 0..(self.memory_map_size) {
+		for index in 0..(self.memory_map_size as usize) {
+			if index < 38 || index > 46 {
+				continue;
+			}
 			let block = self.memory_map[index]; // Access the block directly using index
 
 			let mut bits: [char; 32] = ['0'; 32];
@@ -284,7 +271,7 @@ impl PhysicalMemoryManager {
 			}
 
 			// Printing each block's address and its bit pattern directly
-			print_serial!("0x{:08x}: ", index * 32 * PMMNGR_BLOCK_SIZE);
+			print_serial!("0x{:08x}: ", index * 32 * PMMNGR_BLOCK_SIZE as usize);
 			for bit in bits.iter() {
 				print_serial!("{}", bit);
 			}
@@ -294,7 +281,7 @@ impl PhysicalMemoryManager {
 
 	pub fn update_bitmap_from_memory(&mut self) {
 		// Iterate over the entire memory range in block-size increments
-		for address in (0..self.memory_size).step_by(PMMNGR_BLOCK_SIZE) {
+		for address in (0..self.memory_size).step_by(PMMNGR_BLOCK_SIZE as usize) {
 			// Check if the memory block (frame) at this address is used
 			if self.is_block_used(address) {
 				// Calculate the corresponding bit in the bitmap
@@ -305,7 +292,7 @@ impl PhysicalMemoryManager {
 		}
 	}
 
-	fn is_block_used(&self, address: usize) -> bool {
+	fn is_block_used(&self, address: u32) -> bool {
 		let block_ptr = address as *const u8; // Pointer to the start of the block
 
 		for offset in 0..(PMMNGR_BLOCK_SIZE as isize) {
@@ -326,19 +313,19 @@ pub fn physical_memory_manager_init() {
 
 	pmm.process_memory_map();
 	pmm.init();
-	// unsafe {
-	// 	kmalloc_init();
-	// }
-	pmm.print_memory_map();
+	unsafe {
+		kmalloc_init();
+	}
+	//pmm.print_memory_map();
 }
 
-pub fn physical_address_is_valid(phys_addr: usize) -> bool {
+pub fn physical_address_is_valid(phys_addr: u32) -> bool {
 	let usable_region = PMM.lock().usable_regions[1];
-	phys_addr >= usable_region.start_address
-		&& phys_addr <= usable_region.start_address + usable_region.size
+	phys_addr >= usable_region.start_address as u32
+		&& phys_addr <= usable_region.start_address as u32 + usable_region.size as u32
 }
 
 /// Align an address to the nearest page boundary.
-pub fn align_up(addr: usize) -> usize {
+pub fn align_up(addr: u32) -> u32 {
 	(addr + 0xfff) & !0xfff
 }

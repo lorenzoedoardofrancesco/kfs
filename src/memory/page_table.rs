@@ -3,6 +3,7 @@ use crate::{
 	memory::{
 		page_directory::{ENTRY_COUNT, PAGE_SIZE},
 		page_table_entry::{PageTableEntry, PageTableFlags},
+		physical_memory_managment::PMM,
 	},
 	utils::debug::LogLevel,
 };
@@ -15,7 +16,7 @@ pub struct PageTable {
 
 impl PageTable {
 	/// Creates a new, empty page table with default entries.
-	pub fn new(physical_address: usize, flags: PageTableFlags) -> Self {
+	pub fn new(physical_address: u32, flags: PageTableFlags) -> Self {
 		PageTable {
 			entries: [PageTableEntry::new(); ENTRY_COUNT],
 		}
@@ -23,23 +24,37 @@ impl PageTable {
 
 	/// Maps a virtual address to a physical frame with the given attributes.
 	/// Errors if frame allocation or address translation fails.
-	pub fn map(&mut self, index: usize, physical_address: usize, flags: PageTableFlags) {
+	pub fn map(&mut self, index: u32, physical_address: u32, flags: PageTableFlags) {
 		println!("Mapping virtual address: {:#x}", index);
 		println!("Physical address: {:#x}", physical_address);
 		println!("Flags: {:#x}", flags.bits());
 		println!("Index: {:#x}", index);
-		//	self.entries[index] =
-		//		PageTableEntry::new_from_address(physical_address, flags | PageTableFlags::PRESENT);
+		self.entries[index as usize] =
+		PageTableEntry::new_from_address(physical_address, flags | PageTableFlags::PRESENT);
+	}
+
+	/// Unmaps a virtual address, removing the `PRESENT` attribute from the PageTableEntry.
+	/// Logs a warning and returns an error if the virtual address is out of bounds.
+	pub fn unmap(&mut self, table_index: u32) {
+		let entry = self.entries[table_index as usize];
+		let frame = entry.frame();
+		if entry.is_present() {
+			//self.entries[table_index as usize].remove_attribute(PageTableFlags::PRESENT);
+			PMM.lock().deallocate_frame(frame);
+		} else {
+			panic!("Page table entry is not present");
+		}
+		
 	}
 
 	/// Translates a physical address to a virtual address.
 	/// Validates the physical address and checks for overflow.
-	fn translate_physical_to_virtual(&self, phys_addr: usize) -> Result<usize, &'static str> {
+	fn translate_physical_to_virtual(&self, phys_addr: u32) -> Result<u32, &'static str> {
 		if physical_address_is_valid(phys_addr) == false {
 			return Err("Physical address is invalid");
 		}
 
-		const VIRTUAL_BASE_OFFSET: usize = 0xc0000000;
+		const VIRTUAL_BASE_OFFSET: u32 = 0xc0000000;
 
 		phys_addr
 			.checked_add(VIRTUAL_BASE_OFFSET)
@@ -69,27 +84,11 @@ impl PageTable {
 		}
 	}
 
-	/// Unmaps a virtual address, removing the `PRESENT` attribute from the PageTableEntry.
-	/// Logs a warning and returns an error if the virtual address is out of bounds.
-	pub fn unmap(&mut self, virt_addr: usize) -> Result<(), &'static str> {
-		let index = match Self::virtual_to_index(virt_addr) {
-			Ok(index) => index,
-			Err(e) => {
-				log! {LogLevel::Warning, "{}", e};
-				return Err(e);
-			}
-		};
-		let mut entry = self.entries[index];
-		entry.remove_attribute(PageTableFlags::PRESENT);
-		self.entries[index] = entry;
-
-		Ok(())
-	}
 
 	/// Translates a virtual address to its corresponding physical address.
 	/// Returns `None` if the entry is not present.
 	/// Logs a warning if the virtual address is out of bounds.
-	pub fn translate(&self, virt_addr: usize) -> Option<usize> {
+	pub fn translate(&self, virt_addr: usize) -> Option<u32> {
 		let index = match Self::virtual_to_index(virt_addr) {
 			Ok(index) => index,
 			Err(e) => {
@@ -99,7 +98,7 @@ impl PageTable {
 		};
 		let entry = self.entries[index];
 		if entry.is_present() {
-			Some(entry.frame() | (virt_addr & (PAGE_SIZE - 1)))
+			Some(entry.frame() | (virt_addr as u32 & (PAGE_SIZE as u32 - 1)))
 		} else {
 			None
 		}

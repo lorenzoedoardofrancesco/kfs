@@ -3,7 +3,7 @@ use crate::memory::physical_memory_managment::PMM;
 use bitflags::bitflags;
 
 bitflags! {
-	pub struct PageTableFlags: usize {
+	pub struct PageTableFlags: u32 {
 		const PRESENT = 0b1;
 		const WRITABLE = 0b10;
 		const USER = 0b100;
@@ -21,7 +21,7 @@ bitflags! {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct PageTableEntry {
-	pub value: usize,
+	value: u32,
 }
 
 impl PageTableEntry {
@@ -29,19 +29,20 @@ impl PageTableEntry {
 		PageTableEntry { value: 0 }
 	}
 
-	pub fn new_from_address(&mut self, address: usize, flags: PageTableFlags) {
-		self.value = address | flags.bits();
+	pub fn new_from_address(address: u32, flags: PageTableFlags) -> Self {
+		PageTableEntry {
+			value: address | flags.bits(),
+		}
 	}
 
-	pub fn alloc_new() -> Result<Self, &'static str> {
+	pub fn alloc_new(&mut self) {
 		let frame = PMM
 			.lock()
 			.allocate_frame()
-			.map_err(|_| "Failed to allocate frame for page table entry")?;
+			.map_err(|_| "Failed to allocate frame for page table entry");
 
-		let mut entry = PageTableEntry::new();
-		entry.set_frame_address(frame)?;
-		Ok(entry)
+		self.set_frame_address(frame.unwrap());
+		self.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
 	}
 
 	/// Adds the specified attribute flags to this entry.
@@ -56,8 +57,8 @@ impl PageTableEntry {
 
 	/// Sets the frame address for this entry.
 	/// Ensure that the address is correctly aligned and doesn't interfere with flags.
-	pub fn set_frame_address(&mut self, frame: usize) -> Result<(), &'static str> {
-		if frame % PAGE_SIZE != 0 {
+	pub fn set_frame_address(&mut self, frame: u32) -> Result<(), &'static str> {
+		if frame % PAGE_SIZE as u32 != 0 {
 			return Err("Frame address is misaligned");
 		}
 		let frame_address = frame & PageTableFlags::FRAME.bits();
@@ -76,11 +77,11 @@ impl PageTableEntry {
 	}
 
 	/// Returns the frame address for this entry.
-	pub fn frame(&self) -> usize {
+	pub fn frame(&self) -> u32 {
 		self.value & PageTableFlags::FRAME.bits()
 	}
 
 	pub fn is_unused(&self) -> bool {
-		true // TODO implement the used/unused
+		true   // TODO implement the used/unused 
 	}
 }

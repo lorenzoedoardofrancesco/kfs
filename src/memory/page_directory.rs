@@ -1,10 +1,9 @@
-use crate::memory::{page_directory, page_table};
 use crate::memory::{
-	page_table::PageTable, page_table_entry::PageTableEntry, page_table_entry::PageTableFlags,
+	page_table::PageTable, page_table_entry::PageTableFlags, physical_memory_managment::PMM,
 };
-use crate::vga::prompt::tab;
 use bitflags::bitflags;
 use core::arch::asm;
+use core::ptr::null_mut;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
 /// Constants defining the page size and the number of entries in a page table.
@@ -16,22 +15,15 @@ pub const PAGE_TABLE_SIZE: usize = ENTRY_COUNT * PAGE_SIZE;
 // Constants for memory addresses reserved for paging structures
 /// TODO: Make these constants dynamic and in the kernel space (heap???)
 
-pub static mut PAGE_DIRECTORY_ADDR: usize = 0;
-pub static mut PAGE_TABLES_ADDR: usize = 0;
+pub static mut PAGE_DIRECTORY_ADDR: u32 = 0;
+pub static mut PAGE_TABLES_ADDR: u32 = 0;
 
-pub static mut PAGE_DIRECTORY: PageDirectory = PageDirectory {
-	entries: [PageDirectoryEntry { value: 0 }; ENTRY_COUNT],
-};
-pub static mut PAGE_TABLES: [PageTable; ENTRY_COUNT] = [PageTable {
-	entries: [PageTableEntry { value: 0 }; ENTRY_COUNT],
-}; ENTRY_COUNT];
-
-pub static mut PAGE_TABLE_BOOT: PageTable = PageTable {
-	entries: [PageTableEntry { value: 0 }; ENTRY_COUNT],
-};
+// Static references to the page directory and tables using AtomicPtr
+pub static mut PAGE_DIRECTORY: AtomicPtr<PageDirectory> = AtomicPtr::new(null_mut());
+pub static mut PAGE_TABLES: AtomicPtr<[PageTable; ENTRY_COUNT]> = AtomicPtr::new(null_mut());
 
 bitflags! {
-	pub struct PageDirectoryFlags: usize {
+	pub struct PageDirectoryFlags: u32 {
 		const PRESENT       = 0b1;
 		const WRITABLE      = 0b10;
 		const USER          = 0b100;
@@ -49,7 +41,7 @@ bitflags! {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct PageDirectoryEntry {
-	value: usize,
+	value: u32,
 }
 
 impl PageDirectoryEntry {
@@ -68,19 +60,19 @@ impl PageDirectoryEntry {
 	}
 
 	// Sets up a PageTable for this directory entry
-	pub fn set(&mut self, page_table: &PageTable, flags: PageTableFlags) {
-		self.set_address(page_table as *const _ as usize);
+	pub fn set(&mut self, frame: u32, flags: PageTableFlags) {
+		self.set_address(frame);
 		self.set_flags(flags | PageTableFlags::PRESENT);
 	}
 
 	// Sets the frame address for this directory entry
-	pub fn set_address(&mut self, page_table: usize) {
-		let page_table_addr = page_table & PageDirectoryFlags::FRAME.bits();
-		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | page_table_addr;
+	pub fn set_address(&mut self, frame: u32) {
+		let frame_addr = (frame & PageDirectoryFlags::FRAME.bits()) as u32;
+		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | frame_addr;
 	}
 
 	// Gets the frame address from this directory entry
-	pub fn address(&self) -> usize {
+	pub fn address(&self) -> u32 {
 		self.value & PageDirectoryFlags::FRAME.bits()
 	}
 
@@ -94,7 +86,7 @@ impl PageDirectoryEntry {
 		PageTableFlags::from_bits_truncate(self.value)
 	}
 
-	pub fn set_frame(&mut self, frame: usize) {
+	pub fn set_frame(&mut self, frame: u32) {
 		let frame_addr = frame & PageDirectoryFlags::FRAME.bits();
 		self.value = (self.value & !PageDirectoryFlags::FRAME.bits()) | frame_addr;
 	}
@@ -116,18 +108,55 @@ pub struct PageDirectory {
 }
 
 impl PageDirectory {
-	pub fn map(&mut self, virtual_address: usize, frame: usize, flags: PageDirectoryFlags) {
+	pub fn map(&mut self, virtual_address: u32, frame: u32, flags: PageDirectoryFlags) {
 		let index = (virtual_address >> 22) & 0x3ff;
 		let table_index = (virtual_address >> 12) & 0x3ff;
-		let entry = &mut self.entries[index];
+		let entry = &mut self.entries[index as usize];
 		entry.add_attribute(flags);
 		let page_table = entry.get_page_table().unwrap();
 		let page_table_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
 		page_table.map(table_index, frame, page_table_flags);
+
+		// Print all informations
+		// println_serial!("\nPage Directory Mapping");
+		// println_serial!("Virtual Address: {:#x}", virtual_address);
+		// println_serial!("Physical Address: {:#x}", frame);
+		// println_serial!("Index: {:#x}", index);
+		// println_serial!("Table Index: {:#x}", table_index);
+	}
+
+	pub fn unmap(&mut self, virtual_address: u32) {
+		let index = (virtual_address >> 22) & 0x3ff;
+		let table_index = (virtual_address >> 12) & 0x3ff;
+		let entry = &mut self.entries[index as usize];
+		let page_table = entry.get_page_table().unwrap();
+		page_table.unmap(table_index);
+	}
+
+	pub fn map_range(&mut self, address: u32, size: u32, flags: PageDirectoryFlags) {
+		let start_address = address & !(PAGE_SIZE as u32 - 1); // Align start address down to page boundary
+		let end_address = (address + size + PAGE_SIZE as u32 - 1) & !(PAGE_SIZE as u32 - 1); // Align end address up
+
+		let mut current_address = start_address;
+		while current_address < end_address {
+			let index = (current_address >> 22) & 0x3ff;
+			let table_index = (current_address >> 12) & 0x3ff;
+
+			let page_table = &mut self.entries[index as usize].get_page_table().unwrap();
+			let entry = &mut page_table.entries[table_index as usize];
+
+
+			if PMM.lock().nmap_test_address(address) {
+				// Allocate a new frame if the page is not present
+				entry.alloc_new();
+			}
+
+			current_address += PAGE_SIZE as u32;
+		}
 	}
 
 	/// Adds or updates a mapping in the page directory.
-	pub fn add_entry(&mut self, index: usize, frame: usize, flags: PageDirectoryFlags) {
+	pub fn add_entry(&mut self, index: usize, frame: u32, flags: PageDirectoryFlags) {
 		let entry = &mut self.entries[index];
 		entry.set_frame(frame);
 		entry.add_attribute(flags);
@@ -153,41 +182,41 @@ impl PageDirectory {
 pub fn enable_paging() {
 	unsafe {
 		asm!("mov cr3, {}", in(reg) PAGE_DIRECTORY_ADDR);
-		let mut cr0: usize;
+		let mut cr0: u32;
 		asm!("mov {}, cr0", out(reg) cr0);
 		cr0 |= 0x80000000; // Set the PG bit to enable paging
 		asm!("mov cr0, {}", in(reg) cr0);
 	}
 }
 
-// pub fn init_pages() {
-// 	use crate::memory::physical_memory_managment::PMM;
-// 	unsafe {
-// 		PAGE_DIRECTORY = AtomicPtr::new(PAGE_DIRECTORY_ADDR as *mut PageDirectory);
-// 		PAGE_TABLES = AtomicPtr::new(PAGE_TABLES_ADDR as *mut [PageTable; ENTRY_COUNT]);
-// 		// Convert raw pointers to mutable references
-// 		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
-// 		let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
+pub fn init_pages() {
+	use crate::memory::physical_memory_managment::PMM;
+	unsafe {
+		PAGE_DIRECTORY = AtomicPtr::new(PAGE_DIRECTORY_ADDR as *mut PageDirectory);
+		PAGE_TABLES = AtomicPtr::new(PAGE_TABLES_ADDR as *mut [PageTable; ENTRY_COUNT]);
+		// Convert raw pointers to mutable references
+		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
+		let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
 
-// 		for (i, table) in tables.iter_mut().enumerate() {
-// 			// Calculate the physical address of this table's entries outside the inner loop
-// 			let table_phys_addr = table.entries.as_ptr();
+		for (i, table) in tables.iter_mut().enumerate() {
+			// Calculate the physical address of this table's entries outside the inner loop
+			let table_phys_addr = table.entries.as_ptr() as u32;
 
-// 			for (j, entry) in table.entries.iter_mut().enumerate() {
-// 				let virt = (i << 22) | (j << 12);
-// 				let phys = virt;
-// 				entry.set_frame_address(phys);
-// 				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-// 			}
+			for (j, entry) in table.entries.iter_mut().enumerate() {
+				let virt = (i << 22) | (j << 12);
+				let phys = virt as u32;
+				entry.set_frame_address(phys);
+				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+			}
 
-// 			// Now use the previously calculated physical address
-// 			directory.add_entry(
-// 				i,
-// 				table_phys_addr,
-// 				PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
-// 			);
-// 		}
-// 	}
-// 	PMM.lock().update_bitmap_from_memory();
-// 	enable_paging();
-// }
+			// Now use the previously calculated physical address
+			directory.add_entry(
+				i,
+				table_phys_addr,
+				PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
+			);
+		}
+	}
+	PMM.lock().update_bitmap_from_memory();
+	enable_paging();
+}
