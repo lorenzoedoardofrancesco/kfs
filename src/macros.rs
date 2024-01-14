@@ -109,6 +109,49 @@ macro_rules! handler {
 	}};
 }
 
+/// A ENLEVER SI ON ARRIVE PAS A ERROR CODE
+#[macro_export]
+macro_rules! handler_with_error_code {
+	($name: ident) => {{
+		#[naked]
+		#[no_mangle]
+		extern "C" fn wrapper() {
+			unsafe {
+				asm!(
+					// Set up stack frame
+					"push ebp",
+					"mov ebp, esp",
+
+					// Save all general-purpose registers
+					"pushad",
+
+					// Calculate the correct stack frame pointer
+					"mov eax, esp",
+					"add eax, 40", // Adjust for 'pushad' and possibly other pushed registers
+					"push eax", // Push stack frame pointer
+
+					// Call the actual interrupt handler
+					"call {}",
+
+					// Restore all general-purpose registers
+					"pop eax", // Clean up the stack
+					"popad",
+
+					// Remove the error code from the stack
+					"add esp, 4",
+
+					// Restore base pointer and return from interrupt
+					"pop ebp",
+					"iretd",
+					sym $name,
+					options(noreturn)
+				);
+			}
+		}
+		wrapper as extern "C" fn()
+	}};
+}
+
 /// Prints formatted text to the VGA buffer.
 ///
 /// Disables interrupts, writes formatted text to the VGA buffer, and then re-enables interrupts.

@@ -7,8 +7,8 @@ pub enum SyscallNumber {
 	Read = 2,
 }
 
-impl From<usize> for SyscallNumber {
-	fn from(num: usize) -> Self {
+impl From<u32> for SyscallNumber {
+	fn from(num: u32) -> Self {
 		match num {
 			0 => SyscallNumber::Exit,
 			1 => SyscallNumber::Write,
@@ -34,14 +34,15 @@ static SYSCALL_TABLE: [SyscallEntry; 3] = [
 	SyscallEntry { func: sys_read },
 ];
 
+#[repr(C)]
 pub struct GeneralRegs {
-	pub eax: usize,
-	pub ebx: usize,
-	pub ecx: usize,
-	pub edx: usize,
-	pub esi: usize,
-	pub edi: usize,
-	pub ebp: usize,
+	pub eax: u32,
+	pub ebx: u32,
+	pub ecx: u32,
+	pub edx: u32,
+	pub esi: u32,
+	pub edi: u32,
+	pub ebp: u32,
 }
 
 pub fn syscall(regs: &mut GeneralRegs) {
@@ -73,7 +74,7 @@ fn sys_exit(params: &mut SyscallParameters) {
 fn sys_write(params: &mut SyscallParameters) {
 	let fd = params.regs.ebx; // File descriptor
 	let buf_ptr = params.regs.ecx as *const u8; // Buffer pointer
-	let count = params.regs.edx; // Number of bytes to write
+	let count = params.regs.edx as usize; // Number of bytes to write
 
 	if fd == 1 {
 		// Assuming '1' is standard output

@@ -69,18 +69,14 @@ impl InterruptIndex {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-	instruction_pointer: usize,
-	code_segment: usize,
-	cpu_flags: usize,
-	stack_pointer: usize,
-	stack_segment: usize,
-	eax: usize,
-	ebx: usize,
-	ecx: usize,
-	edx: usize,
-	esi: usize,
-	edi: usize,
-	ebp: usize,
+    // The following registers are pushed by the CPU automatically
+    pub eip: u32,    // Instruction pointer
+    pub cs: u32,     // Code segment
+    pub eflags: u32, // CPU flags
+
+    // These are only present if the interrupt involved a privilege level change
+    pub esp: u32,    // Stack pointer (optional)
+    pub ss: u32,     // Stack segment (optional)
 }
 
 /// Handler functions for various interrupts.
@@ -111,7 +107,7 @@ pub extern "C" fn breakpoint(stack_frame: &mut InterruptStackFrame) {
 	log!(
 		LogLevel::Info,
 		"EXCEPTION: BREAKPOINT at {:#x}\n{:#?}",
-		stack_frame.instruction_pointer,
+		stack_frame.eip,
 		stack_frame
 	);
 }
@@ -168,30 +164,32 @@ pub extern "C" fn general_protection_fault(stack_frame: &mut InterruptStackFrame
 	handle_panic(&"General Protection Fault", Some(stack_frame));
 }
 
-pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame) {
-    let error_code = stack_frame.esi;
-    let faulting_address: usize;
+#[no_mangle]
+pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame, error_code: u32) {
+    // In 32-bit mode, the CR2 register (which contains the faulting address) is also 32 bits
+    let faulting_address: u32;
 
+	println_serial!("Interrupt stack frame: {:#x}", stack_frame as *mut InterruptStackFrame as usize);
+	println_serial!("Error code: {:#x}", error_code);
+	println_serial!("Error code address: {:#x}", &error_code as *const u32 as usize);
+
+    // Inline assembly to read from the CR2 register
     unsafe {
         asm!("mov {}, cr2", out(reg) faulting_address, options(nostack, preserves_flags));
     }
 
+    // The error code is directly provided as an argument to the function
     let present = error_code & 0x1 != 0;
     let write = error_code & 0x2 != 0;
     let user = error_code & 0x4 != 0;
 	
     log!(LogLevel::Error, "Page Fault at address {:#x}", faulting_address);
     log!(LogLevel::Error, "Error Code: {}", error_code);
-	handle_not_present_page_fault(faulting_address, write, user);
+    handle_not_present_page_fault(faulting_address as usize, write, user);
 
-    // // Check if it's a not-present page fault
-    // if !present {
-    //     handle_not_present_page_fault(faulting_address, write, user);
-    // } else {
-	// 	log!(LogLevel::Info, "EXCEPTION: RESERVED\n{:#?}", stack_frame);
-	// }
-	//handle_panic(&"Page Fault", Some(stack_frame));
+    // Additional handling can be added here as required
 }
+
 
 fn handle_not_present_page_fault(faulting_address: usize, write: bool, user: bool) {
     let page_directory: &mut PageDirectory = unsafe { &mut *PAGE_DIRECTORY.load(Ordering::Relaxed) };
@@ -275,18 +273,61 @@ pub fn syscall_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	use crate::exceptions::syscalls::{syscall, GeneralRegs};
 
 	let mut registers = GeneralRegs {
-		eax: _stack_frame.eax,
-		ebx: _stack_frame.ebx,
-		ecx: _stack_frame.ecx,
-		edx: _stack_frame.edx,
-		esi: _stack_frame.esi,
-		edi: _stack_frame.edi,
-		ebp: _stack_frame.ebp,
+		eax: 0,
+		ebx: 0,
+		ecx: 0,
+		edx: 0,
+		esi: 0,
+		edi: 0,
+		ebp: 0,
 	};
 
-	syscall(&mut registers);
+	unsafe {
+        asm!(
+            // Save registers into the struct fields
+            "mov [{}], eax",
+            "mov [{}], ebx",
+            "mov [{}], ecx",
+            "mov [{}], edx",
+            "mov [{}], esi",
+            "mov [{}], edi",
+            "mov [{}], ebp",
+            // Pointers to each field of the `registers` struct
+            in(reg) &mut registers.eax,
+            in(reg) &mut registers.ebx,
+            in(reg) &mut registers.ecx,
+            in(reg) &mut registers.edx,
+            in(reg) &mut registers.esi,
+            in(reg) &mut registers.edi,
+            in(reg) &mut registers.ebp,
+            options(preserves_flags, nostack)
+        );
+    }
 
-	_stack_frame.eax = registers.eax;
+    // Call the syscall function with the registers
+    syscall(&mut registers);
+
+    unsafe {
+        asm!(
+            // Restore the register values from the struct fields
+            "mov eax, [{}]",
+            "mov ebx, [{}]",
+            "mov ecx, [{}]",
+            "mov edx, [{}]",
+            "mov esi, [{}]",
+            "mov edi, [{}]",
+            "mov ebp, [{}]",
+            // Pointers to each field of the `registers` struct
+            in(reg) &registers.eax,
+            in(reg) &registers.ebx,
+            in(reg) &registers.ecx,
+            in(reg) &registers.edx,
+            in(reg) &registers.esi,
+            in(reg) &registers.edi,
+            in(reg) &registers.ebp,
+            options(preserves_flags, nostack)
+        );
+    }
 }
 
 /// Initializes the interrupt handlers.
@@ -310,7 +351,6 @@ pub fn init() {
 ///
 /// This function enables interrupts on the CPU by setting the interrupt flag in the CPU's flags register.
 pub fn enable() {
-	use core::arch::asm;
 	unsafe {
 		asm!("sti", options(preserves_flags, nostack));
 	}
@@ -320,7 +360,6 @@ pub fn enable() {
 ///
 /// This function disables interrupts on the CPU by clearing the interrupt flag in the CPU's flags register.
 pub fn disable() {
-	use core::arch::asm;
 	unsafe {
 		asm!("cli", options(preserves_flags, nostack));
 	}

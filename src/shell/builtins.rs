@@ -224,7 +224,7 @@ fn show_uptime() {
 }
 
 // Function to manually trigger a syscall for testing purposes
-pub fn trigger_syscall(syscall_number: usize, arg1: usize, arg2: usize, arg3: usize) {
+pub fn trigger_syscall(syscall_number: u32, arg1: u32, arg2: u32, arg3: u32) {
 	use crate::exceptions::syscalls::GeneralRegs;
 	let mut regs = GeneralRegs {
 		eax: syscall_number, // Syscall number
@@ -259,10 +259,10 @@ fn test_syscall(line: &str) {
 		return;
 	}
 
-	let syscall_number = parts[1].parse::<usize>().unwrap_or(0);
-	let arg1 = parts[2].parse::<usize>().unwrap_or(0);
-	let arg2 = parts[3].parse::<usize>().unwrap_or(0);
-	let arg3 = parts[4].parse::<usize>().unwrap_or(0);
+	let syscall_number = parts[1].parse::<u32>().unwrap_or(0);
+	let arg1 = parts[2].parse::<u32>().unwrap_or(0);
+	let arg2 = parts[3].parse::<u32>().unwrap_or(0);
+	let arg3 = parts[4].parse::<u32>().unwrap_or(0);
 
 	trigger_syscall(syscall_number, arg1, arg2, arg3);
 }

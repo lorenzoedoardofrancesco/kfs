@@ -106,7 +106,7 @@ static STACK_FAULT: extern "C" fn() = handler!(stack_fault);
 static GENERAL_PROTECTION_FAULT: extern "C" fn() = handler!(general_protection_fault);
 
 /// Handler for the 'Page Fault' exception.
-static PAGE_FAULT: extern "C" fn() = handler!(page_fault);
+static PAGE_FAULT: extern "C" fn() = handler_with_error_code!(page_fault);
 
 /// Reserved handler.
 static RESERVED: extern "C" fn() = handler!(reserved);
