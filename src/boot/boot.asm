@@ -24,7 +24,7 @@ align 4096
 boot_page_directory:
     resb 4096
 boot_page_table:
-	resb 4096
+	resb 4096 * 2
 ; Further page tables may be required if the kernel grows beyond 3 MiB.
 
 ; The kernel entry point.
@@ -37,13 +37,13 @@ start:
 	; First address to map is address 0.
 	mov esi, 0
 	; Map 1023 pages. The 1024th will be the VGA text buffer.
-	mov ecx, 1024
+	mov ecx, 2048
 
 .loop_start:
     ; Only map the kernel.
     cmp esi, 0
     jl .skip_mapping
-    cmp esi, _paging_end - 0xC0000000
+    cmp esi, 0xC0800000 - 0xC0000000
     jge .end_mapping
 
     ; Map physical address as "present, writable".
@@ -63,7 +63,9 @@ start:
 .end_mapping:
     ; Map the page table to both virtual addresses 0xC0000000 and 0xC0000000.
     mov dword [boot_page_directory - 0xC0000000], boot_page_table - 0xC0000000 + 0x003
+    mov dword [boot_page_directory - 0xC0000000 + 4], boot_page_table - 0xC0000000 + 0x1003
     mov dword [boot_page_directory - 0xC0000000 + 768 * 4], boot_page_table - 0xC0000000 + 0x003
+    mov dword [boot_page_directory - 0xC0000000 + 769 * 4], boot_page_table - 0xC0000000 + 0x1003
 
     ; Set cr3 to the address of the boot_page_directory.
     mov ecx, boot_page_directory - 0xC0000000

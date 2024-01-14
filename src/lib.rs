@@ -60,6 +60,7 @@ use crate::shell::prints;
 use boot::multiboot;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
+use memory::physical_memory_managment::HIGH_KERNEL_OFFSET;
 use structures::{gdt, idt};
 use utils::{debug, librs::hlt};
 use vga::parrot::animate_parrot;
@@ -98,7 +99,6 @@ fn panic(info: &PanicInfo) -> ! {
 	handle_panic(info, None);
 }
 
-const HIGH_KERNEL_OFFSET: u32 = 0xC0000000;  //<<<<<< dans const
 /// Initializes the kernel components.
 ///
 /// Sets up serial port communication for debugging, validates the multiboot header,
@@ -108,16 +108,16 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	debug::init_serial_port();
 	gdt::init();
 	idt::init();
-	multiboot::read_multiboot_info(multiboot_addr + HIGH_KERNEL_OFFSET);
-	//memory::physical_memory_managment::physical_memory_manager_init();
-	//memory::page_directory::init_pages();
 	interrupts::init();
+	multiboot::read_multiboot_info(multiboot_addr + HIGH_KERNEL_OFFSET);
+	memory::physical_memory_managment::physical_memory_manager_init();
+	//memory::page_directory::init_pages();
 	prints::print_welcome_message();
 }
 
 pub unsafe fn memory_management_tester() {
 	// Test 1: Allocate a small block of memory
-	println_serial!("\nTest 1: Allocating 256 bytes");
+	println_serial!("Test 1: Allocating 256 bytes");
 	let address1 = kmalloc(256);
 	println_serial!(
 		"Address {:?}, Size {:?}",

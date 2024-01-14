@@ -218,5 +218,5 @@ pub fn init_pages() {
 		}
 	}
 	PMM.lock().update_bitmap_from_memory();
-	enable_paging();
+	//enable_paging();
 }

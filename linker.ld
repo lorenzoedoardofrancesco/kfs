@@ -42,8 +42,6 @@ SECTIONS {
         *(COMMON)
 		*(.bootstrap_stack)
     }
+	. = ALIGN(4K);
     _kernel_end = .;
-
-	. = ALIGN(4M);
-	_paging_end = .;
 }
