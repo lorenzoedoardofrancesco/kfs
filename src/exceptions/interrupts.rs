@@ -6,8 +6,13 @@
 //! response to hardware and software interrupts.
 use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
 use crate::exceptions::pic8259::ChainedPics;
+use crate::memory::page_directory::{PAGE_DIRECTORY_ADDR, PageDirectory, PAGE_DIRECTORY, PAGE_TABLES, PAGE_TABLE_SIZE, PAGE_TABLES_ADDR, PAGE_SIZE};
+use crate::memory::page_table::PageTable;
+use crate::memory::page_table_entry::{PageTableFlags, PageTableEntry};
+use crate::memory::physical_memory_managment::{PMM_ADDRESS, PhysicalMemoryManager};
 use crate::utils::debug::LogLevel;
 use crate::utils::io::inb;
+use core::arch::asm;
 use core::sync::atomic::{AtomicU32, Ordering};
 use spin::Mutex;
 
@@ -164,7 +169,54 @@ pub extern "C" fn general_protection_fault(stack_frame: &mut InterruptStackFrame
 }
 
 pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame) {
-	log!(LogLevel::Error, "EXCEPTION: PAGE FAULT\n{:#?}", stack_frame);
+    let error_code = stack_frame.esi;
+    let faulting_address: usize;
+
+    unsafe {
+        asm!("mov {}, cr2", out(reg) faulting_address, options(nostack, preserves_flags));
+    }
+
+    let present = error_code & 0x1 != 0;
+    let write = error_code & 0x2 != 0;
+    let user = error_code & 0x4 != 0;
+	
+    log!(LogLevel::Error, "Page Fault at address {:#x}", faulting_address);
+    log!(LogLevel::Error, "Error Code: {}", error_code);
+	handle_not_present_page_fault(faulting_address, write, user);
+
+    // // Check if it's a not-present page fault
+    // if !present {
+    //     handle_not_present_page_fault(faulting_address, write, user);
+    // } else {
+	// 	log!(LogLevel::Info, "EXCEPTION: RESERVED\n{:#?}", stack_frame);
+	// }
+	//handle_panic(&"Page Fault", Some(stack_frame));
+}
+
+fn handle_not_present_page_fault(faulting_address: usize, write: bool, user: bool) {
+    let page_directory: &mut PageDirectory = unsafe { &mut *PAGE_DIRECTORY.load(Ordering::Relaxed) };
+
+    // Calculate the page directory index and page table index.
+    let pd_index = faulting_address >> 22;
+    let pt_index = (faulting_address >> 12) & 0x3FF;
+
+	println_serial!("Page directory index: {}", pd_index);
+	println_serial!("Page table index: {}", pt_index);
+
+		// Check if the page table exists.
+    let page_table_addr = unsafe { PAGE_TABLES_ADDR + (pd_index * PAGE_SIZE) as u32 };
+	let page_table = unsafe { &mut *(page_table_addr as *mut PageTable) } ;
+
+	// Allocate a new frame for the page.
+	let pmm = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
+	let frame: u32 = pmm.allocate_frame().unwrap();
+	println_serial!("MIAOOO");
+	println_serial!("Page table address: {:#x}", page_table_addr);
+	let page_table_entry = (page_table_addr as usize + (pt_index * 4)) as *mut PageTableEntry;
+	println_serial!("Page table entry: {:#x}", page_table_entry as usize);
+	unsafe { (*page_table_entry).value = frame | PageTableFlags::PRESENT.bits() | PageTableFlags::WRITABLE.bits() };
+	println_serial!("Page table entry value: {:#x}", unsafe { (*page_table_entry).value });
+	//page_table.add_entry(pt_index, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
 }
 
 pub extern "C" fn reserved(stack_frame: &mut InterruptStackFrame) {

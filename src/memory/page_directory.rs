@@ -51,12 +51,8 @@ impl PageDirectoryEntry {
 
 	// Set the frame address
 	pub fn get_page_table(&self) -> Option<&mut PageTable> {
-		if self.flags().contains(PageTableFlags::PRESENT) {
-			let table_address = self.address() & 0xFFFFF000; // Mask to get the address
-			Some(unsafe { &mut *(table_address as *mut PageTable) })
-		} else {
-			None
-		}
+		let table_address = self.address() & 0xFFFFF000; // Mask to get the address
+		Some(unsafe { &mut *(table_address as *mut PageTable) })
 	}
 
 	// Sets up a PageTable for this directory entry
@@ -145,7 +141,6 @@ impl PageDirectory {
 			let page_table = &mut self.entries[index as usize].get_page_table().unwrap();
 			let entry = &mut page_table.entries[table_index as usize];
 
-
 			if PMM.lock().nmap_test_address(address) {
 				// Allocate a new frame if the page is not present
 				entry.alloc_new();
@@ -190,7 +185,6 @@ pub fn enable_paging() {
 }
 
 pub fn init_pages() {
-	use crate::memory::physical_memory_managment::PMM;
 	unsafe {
 		PAGE_DIRECTORY = AtomicPtr::new(PAGE_DIRECTORY_ADDR as *mut PageDirectory);
 		PAGE_TABLES = AtomicPtr::new(PAGE_TABLES_ADDR as *mut [PageTable; ENTRY_COUNT]);
@@ -198,25 +192,46 @@ pub fn init_pages() {
 		let directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
 		let tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
 
-		for (i, table) in tables.iter_mut().enumerate() {
-			// Calculate the physical address of this table's entries outside the inner loop
-			let table_phys_addr = table.entries.as_ptr() as u32;
+		for i in 0..ENTRY_COUNT {
+			if i >= 770 {
+				directory.add_entry(
+					i,
+					(tables.as_ptr() as u32) + (i * PAGE_TABLE_SIZE) as u32,
+					PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
+				);
 
-			for (j, entry) in table.entries.iter_mut().enumerate() {
-				let virt = (i << 22) | (j << 12);
-				let phys = virt as u32;
-				entry.set_frame_address(phys);
-				entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+				// Set up the page table
+				let table = &mut tables[i];
+				for j in 0..ENTRY_COUNT {
+					table.set_flags_entry(j, !PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+				}
+
+			// Initialize the page table
+			} else {
+				// Set the entry to not present
+				directory.add_entry(i, 0, PageDirectoryFlags::empty());
 			}
-
-			// Now use the previously calculated physical address
-			directory.add_entry(
-				i,
-				table_phys_addr,
-				PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
-			);
 		}
+
+		// for (i, table) in tables.iter_mut().enumerate() {
+		// 	// Calculate the physical address of this table's entries outside the inner loop
+		// 	let table_phys_addr = table.entries.as_ptr() as u32;
+
+		// 	for (j, entry) in table.entries.iter_mut().enumerate() {
+		// 		let virt = (i << 22) | (j << 12);
+		// 		let phys = virt as u32;
+		// 		entry.set_frame_address(phys);
+		// 		entry.add_attribute(PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+		// 	}
+
+		// 	// Now use the previously calculated physical address
+		// 	directory.add_entry(
+		// 		i,
+		// 		table_phys_addr,
+		// 		PageDirectoryFlags::PRESENT | PageDirectoryFlags::WRITABLE,
+		// 	);
+		// }
 	}
-	PMM.lock().update_bitmap_from_memory();
+	//PMM.lock().update_bitmap_from_memory();
 	//enable_paging();
 }

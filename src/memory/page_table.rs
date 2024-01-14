@@ -3,7 +3,7 @@ use crate::{
 	memory::{
 		page_directory::{ENTRY_COUNT, PAGE_SIZE},
 		page_table_entry::{PageTableEntry, PageTableFlags},
-		physical_memory_managment::PMM,
+		physical_memory_managment::{PMM, PMM_ADDRESS, PhysicalMemoryManager},
 	},
 	utils::debug::LogLevel,
 };
@@ -20,6 +20,18 @@ impl PageTable {
 		PageTable {
 			entries: [PageTableEntry::new(); ENTRY_COUNT],
 		}
+	}
+
+	pub fn add_entry(&mut self, index: usize, flags: PageTableFlags) {
+		self.entries[index].set_flags(flags);
+		let pmm = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
+		let frame = pmm.allocate_frame().unwrap();
+		println_serial!("Frame: {:#x}", frame);
+		self.entries[index].set_frame_address(frame);
+	}
+
+	pub fn set_flags_entry(&mut self, index: usize, flags: PageTableFlags) {
+		self.entries[index].set_flags(flags);
 	}
 
 	/// Maps a virtual address to a physical frame with the given attributes.
@@ -115,5 +127,9 @@ impl PageTable {
 			}
 		};
 		&mut self.entries[index]
+	}
+
+	pub fn is_present(&self, index: usize) -> bool {
+		self.entries[index].is_present()
 	}
 }

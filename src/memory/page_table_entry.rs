@@ -21,12 +21,16 @@ bitflags! {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct PageTableEntry {
-	value: u32,
+	pub value: u32,
 }
 
 impl PageTableEntry {
 	pub fn new() -> Self {
 		PageTableEntry { value: 0 }
+	}
+
+	pub fn set_flags(&mut self, flags: PageTableFlags) {
+		self.value = (self.value & !PageTableFlags::all().bits()) | flags.bits();
 	}
 
 	pub fn new_from_address(address: u32, flags: PageTableFlags) -> Self {
@@ -63,6 +67,7 @@ impl PageTableEntry {
 		}
 		let frame_address = frame & PageTableFlags::FRAME.bits();
 		self.value = (self.value & !PageTableFlags::FRAME.bits()) | frame_address;
+		println_serial!("Frame address: {:#x}", frame_address);
 		Ok(())
 	}
 
