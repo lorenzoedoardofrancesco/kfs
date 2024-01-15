@@ -1,9 +1,10 @@
 use core::mem::size_of;
 
+use super::kmalloc::kernel_heap_init;
+use super::kmalloc::{KERNEL_HEAP_END, KERNEL_HEAP_START};
+use super::page_directory::init_page_directory;
+use super::page_directory::{PAGE_DIRECTORY_ADDR, PAGE_TABLES_ADDR, PAGE_TABLE_SIZE};
 use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag};
-use crate::memory::kmalloc::kernel_heap_init;
-use crate::memory::kmalloc::{KERNEL_HEAP_END, KERNEL_HEAP_START};
-use crate::memory::page_directory::{PAGE_DIRECTORY_ADDR, PAGE_TABLES_ADDR, PAGE_TABLE_SIZE};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -94,9 +95,12 @@ impl PhysicalMemoryManager {
 			println_serial!("Kernel space end:         {:#x}", KERNEL_SPACE_END);
 		}
 
-		let pmm: &mut PhysicalMemoryManager = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
+		let pmm: &mut PhysicalMemoryManager =
+			unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
 		*pmm = PhysicalMemoryManager {
-			memory_map: unsafe { core::slice::from_raw_parts_mut(MEMORY_MAP as *mut u32, memory_map_size as usize) },
+			memory_map: unsafe {
+				core::slice::from_raw_parts_mut(MEMORY_MAP as *mut u32, memory_map_size as usize)
+			},
 			used_blocks: 0,
 			max_blocks: self.memory_size / PMMNGR_BLOCK_SIZE,
 			memory_map_size: memory_map_size,
@@ -105,7 +109,6 @@ impl PhysicalMemoryManager {
 			memory_map_tag: None,
 			memory_map_entries: None,
 		};
-
 
 		println_serial!(
 			"Memory size: {:#x}, max blocks: {:#x}, memory map size: {:#x}",
@@ -141,7 +144,8 @@ impl PhysicalMemoryManager {
 
 	/// Sets a bit in the memory map.
 	fn mmap_set(&mut self, bit: u32) {
-		let pmm: &mut PhysicalMemoryManager = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
+		let pmm: &mut PhysicalMemoryManager =
+			unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
 
 		let index = bit / 32;
 		let offset = bit % 32;
@@ -153,10 +157,10 @@ impl PhysicalMemoryManager {
 	fn mmap_unset(&mut self, bit: u32) {
 		let index = bit / 32;
 		let offset = bit % 32;
-		let pmm: &mut PhysicalMemoryManager = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
+		let pmm: &mut PhysicalMemoryManager =
+			unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
 		pmm.memory_map[index as usize] &= !(1 << offset);
 		pmm.used_blocks -= 1;
-
 	}
 
 	fn mmap_unset_address(&mut self, address: u32) {
@@ -220,11 +224,15 @@ impl PhysicalMemoryManager {
 	}
 
 	pub fn allocate_frame(&mut self) -> Result<u32, &'static str> {
-		println_serial!("Used blocks: {:#x}, Max blocks: {:#x}", self.used_blocks, self.max_blocks);
+		println_serial!(
+			"Used blocks: {:#x}, Max blocks: {:#x}",
+			self.used_blocks,
+			self.max_blocks
+		);
 		let pmm = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
-		
+
 		if pmm.used_blocks >= pmm.max_blocks {
-		return Err("Out of memory");
+			return Err("Out of memory");
 		}
 
 		let mut frame = 0;
@@ -355,15 +363,9 @@ pub fn physical_memory_manager_init() {
 	pmm.process_memory_map();
 	pmm.init();
 	unsafe {
-		kernel_heap_init();
+		//	kernel_heap_init();
 	}
-	pmm.print_memory_map();
-}
-
-pub fn physical_address_is_valid(phys_addr: u32) -> bool {
-	let usable_region = PMM.lock().usable_regions[1];
-	phys_addr >= usable_region.start_address as u32
-		&& phys_addr <= usable_region.start_address as u32 + usable_region.size as u32
+	//pmm.print_memory_map();
 }
 
 /// Align an address to the nearest page boundary.

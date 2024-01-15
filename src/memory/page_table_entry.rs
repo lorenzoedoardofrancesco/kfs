@@ -24,17 +24,17 @@ pub struct PageTableEntry {
 }
 
 impl PageTableEntry {
-	// Creates a new PageTableEntry with zeroed flags
+	/// Creates a new PageTableEntry with zeroed flags
 	pub fn new() -> Self {
 		PageTableEntry { value: 0 }
 	}
 
-	// Creates a new PageTableEntry from the given frame address and flags
+	/// Creates a new PageTableEntry from the given frame address and flags
 	pub fn set_frame_address(&mut self, frame_address: u32, flags: PageTableFlags) {
 		self.value = frame_address | flags.bits();
 	}
 
-	// Sets the flags for this page table entry
+	/// Sets the flags for this page table entry
 	pub fn set_flags(&mut self, flags: PageTableFlags) {
 		self.value = (self.value & PageTableFlags::FRAME.bits()) | flags.bits();
 	}

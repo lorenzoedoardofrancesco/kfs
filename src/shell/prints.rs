@@ -86,6 +86,18 @@ pub fn print_stack(line: &str, mode: PrintStackMode) {
 			}
 			offset
 		}
+		Some("cr3") => {
+			let cr3: usize;
+			unsafe {
+				core::arch::asm!("mov {}, cr3", out(reg) cr3);
+			}
+			println_serial!("cr3: {:x}", cr3);
+						let esp: usize;
+			unsafe {
+				core::arch::asm!("mov {}, esp", out(reg) esp);
+			}
+			esp
+		}
 		Some(addr_str) => usize::from_str_radix(addr_str, 16).unwrap_or(0),
 		None => 0,
 	};

@@ -1,6 +1,8 @@
 use crate::memory::page_table::PageTable;
 use bitflags::bitflags;
 
+use super::physical_memory_managment::HIGH_KERNEL_OFFSET;
+
 bitflags! {
 	pub struct PageDirectoryFlags: u32 {
 		const PRESENT       = 0b1;
@@ -24,7 +26,7 @@ pub struct PageDirectoryEntry {
 impl PageDirectoryEntry {
 	// Sets up a PageTable for this directory entry
 	pub fn set(&mut self, page_table: u32, flags: PageDirectoryFlags) {
-		self.value = page_table | flags.bits();
+		self.value = (page_table - HIGH_KERNEL_OFFSET) | flags.bits();
 	}
 
 	// Sets the flags for this directory entry
@@ -34,7 +36,7 @@ impl PageDirectoryEntry {
 
 	// Get the page table for this directory entry
 	pub fn get_page_table(&self) -> &mut PageTable {
-		let table_address = self.value & PageDirectoryFlags::PAGE_TABLE.bits();
+		let table_address = (self.value & PageDirectoryFlags::PAGE_TABLE.bits()) + HIGH_KERNEL_OFFSET;
 		unsafe { &mut *(table_address as *mut PageTable) }
 	}
 

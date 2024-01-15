@@ -111,7 +111,8 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	interrupts::init();
 	multiboot::read_multiboot_info(multiboot_addr + HIGH_KERNEL_OFFSET);
 	memory::physical_memory_managment::physical_memory_manager_init();
-	memory::page_directory::init_pages();
+	unsafe { memory::page_directory::init_page_directory() };
+	memory::page_directory::enable_paging();
 	prints::print_welcome_message();
 }
 

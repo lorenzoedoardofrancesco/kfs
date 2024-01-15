@@ -171,7 +171,6 @@ pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame, error_code: 
 
 	println_serial!("Interrupt stack frame: {:#x}", stack_frame as *mut InterruptStackFrame as usize);
 	println_serial!("Error code: {:#x}", error_code);
-	println_serial!("Error code address: {:#x}", &error_code as *const u32 as usize);
 
     // Inline assembly to read from the CR2 register
     unsafe {

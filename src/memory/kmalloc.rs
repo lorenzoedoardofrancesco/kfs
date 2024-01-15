@@ -11,8 +11,6 @@ use bitflags::bitflags;
 use core::ptr;
 use core::sync::atomic::Ordering;
 
-use super::page_directory::{self, PageDirectoryFlags};
-
 pub static mut KERNEL_HEAP_START: *mut u8 = 0 as *mut u8;
 pub static mut KERNEL_HEAP_END: *mut u8 = 0 as *mut u8;
 pub static mut KERNEL_HEAP_BREAK: *mut u8 = ptr::null_mut();
@@ -196,7 +194,7 @@ fn free_empty_pages(ptr: *mut KmallocHeader) {
 		for i in 0..num_pages {
 			let page_to_unmap = (start_page_number + i) * PAGE_SIZE;
 			let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
-			page_directory.unmap(page_to_unmap as u32);
+			//page_directory.unmap(page_to_unmap as u32);
 			println_serial!("Unmapped page: {:#010X}", page_to_unmap)
 		}
 	}
@@ -283,27 +281,27 @@ fn kbrk(increment: isize) -> *mut u8 {
 			let page_directory_ptr = PAGE_DIRECTORY.load(Ordering::SeqCst);
 			let mut page_table = (*page_directory_ptr).entries[directory_index].get_page_table();
 
-			// If the page table does not exist, create it
-			if page_table.is_none() {
-				let new_table_frame = PMM
-					.lock()
-					.allocate_frame()
-					.expect("Out of physical memory for page table");
-				(*page_directory_ptr).entries[directory_index].set(
-					new_table_frame,
-					PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
-				);
-				page_table = (*page_directory_ptr).entries[directory_index].get_page_table();
-			}
+			// // If the page table does not exist, create it
+			// if page_table.is_none() {
+			// 	let new_table_frame = PMM
+			// 		.lock()
+			// 		.allocate_frame()
+			// 		.expect("Out of physical memory for page table");
+			// 	(*page_directory_ptr).entries[directory_index].set(
+			// 		new_table_frame,
+			// 		PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+			// 	);
+			// 	page_table = (*page_directory_ptr).entries[directory_index].get_page_table();
+			// }
 
-			// Check if the specific page within the table is mapped
-			if let Some(ref mut page_table) = page_table {
-				if page_table.entries[page_table_index].is_unused() {
-					let page = PMM.lock().allocate_frame().expect("Out of physical memory");
-					let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
-					page_directory.map(virtual_address as u32, page, PageDirectoryFlags::WRITABLE);
-				}
-			}
+			// // Check if the specific page within the table is mapped
+			// if let Some(ref mut page_table) = page_table {
+			// 	if page_table.entries[page_table_index].is_unused() {
+			// 		let page = PMM.lock().allocate_frame().expect("Out of physical memory");
+			// 		let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
+			// 		page_directory.map(virtual_address as u32, page, PageDirectoryFlags::WRITABLE);
+			// 	}
+			// }
 
 			// Increment KERNEL_HEAP_BREAK by one page size until it reaches or surpasses new_break
 			KERNEL_HEAP_BREAK = KERNEL_HEAP_BREAK.offset(PAGE_SIZE as isize);
