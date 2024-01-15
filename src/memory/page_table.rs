@@ -3,7 +3,7 @@ use crate::memory::{
 	page_table_entry::{PageTableEntry, PageTableFlags},
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C, align(4096))]
 pub struct PageTable {
 	pub entries: [PageTableEntry; ENTRY_COUNT],
@@ -17,6 +17,12 @@ impl PageTable {
 			entry.set_flags(flags);
 		}
 	}
+
+	pub fn get_page_table_entry(&mut self, virtual_address: u32) -> &mut PageTableEntry {
+		let index = (virtual_address & 0x003FF000) >> 12;
+		&mut self.entries[index as usize]
+	}
+	
 
 	pub fn set_entry(&mut self, index: usize, frame_address: u32, flags: PageTableFlags) {
 		self.entries[index].set_frame_address(frame_address, flags);

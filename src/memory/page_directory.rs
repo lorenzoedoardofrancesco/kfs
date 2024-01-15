@@ -8,6 +8,8 @@ use core::arch::asm;
 use core::ptr::null_mut;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
+use super::{page_table_entry::PageTableEntry, physical_memory_managment::PMM};
+
 /// Constants defining the page size and the number of entries in a page table.
 /// The page size is 4 KiB and the number of entries in a page table is 1024.
 pub const PAGE_SIZE: usize = 4096;
@@ -30,9 +32,31 @@ pub struct PageDirectory {
 impl PageDirectory {
 	pub fn get_page_table(&mut self, virtual_address: u32) -> &mut PageTable {
 		let index = (virtual_address >> 22) as usize;
-		self.entries[index].get_page_table()
+		let addr = self.entries[index].get_page_table();
+		addr
 	}
 }
+
+pub fn map_address(virtual_address: *mut u8) {
+	let page_directory: &mut PageDirectory =
+		unsafe { &mut *PAGE_DIRECTORY.load(Ordering::Relaxed) };
+	let page_table: &mut PageTable = page_directory.get_page_table(virtual_address as u32);
+	let page_table_entry: &mut PageTableEntry =
+		page_table.get_page_table_entry(virtual_address as u32);
+
+	page_table_entry.alloc_new();
+}
+
+pub fn unmap_address(virtual_address: *mut u8) {
+	let page_directory: &mut PageDirectory =
+		unsafe { &mut *PAGE_DIRECTORY.load(Ordering::Relaxed) };
+	let page_table: &mut PageTable = page_directory.get_page_table(virtual_address as u32);
+	let mut page_table_entry: &PageTableEntry =
+		page_table.get_page_table_entry(virtual_address as u32);
+
+	PMM.lock().deallocate_frame(page_table_entry.frame());
+}
+
 pub fn enable_paging() {
 	println_serial!("Enabling paging...");
 	let page_directory_addr = unsafe { PAGE_DIRECTORY_ADDR - HIGH_KERNEL_OFFSET };

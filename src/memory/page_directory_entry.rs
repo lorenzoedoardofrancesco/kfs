@@ -37,6 +37,7 @@ impl PageDirectoryEntry {
 	// Get the page table for this directory entry
 	pub fn get_page_table(&self) -> &mut PageTable {
 		let table_address = (self.value & PageDirectoryFlags::PAGE_TABLE.bits()) + HIGH_KERNEL_OFFSET;
+		print_serial!("Getting page table at address {:X}", table_address);
 		unsafe { &mut *(table_address as *mut PageTable) }
 	}
 

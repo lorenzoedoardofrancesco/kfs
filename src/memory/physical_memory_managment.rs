@@ -347,9 +347,6 @@ impl PhysicalMemoryManager {
 pub fn physical_memory_manager_init() {
 	PMM.lock().process_memory_map();
 	PMM.lock().init();
-	unsafe {
-		kernel_heap_init();
-	}
 	//pmm.print_memory_map();
 }
 

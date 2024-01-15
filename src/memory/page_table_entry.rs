@@ -17,7 +17,7 @@ bitflags! {
 	}
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C, packed)]
 pub struct PageTableEntry {
 	pub value: u32,
@@ -52,15 +52,18 @@ impl PageTableEntry {
 	/// Allocates a new frame for this entry.
 	pub fn alloc_new(&mut self) {
 		// BIEN VERIFIER QUE CA MARCHE
+		print_serial!("Allocating new frame for page table entry...");
 		let frame = PMM
 			.lock()
 			.allocate_frame()
 			.map_err(|_| "Failed to allocate frame for page table entry");
 
+		print_serial!("Frame allocated at {:?}\n", frame.unwrap());
 		self.set_frame_address(
 			frame.unwrap(),
 			PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
 		);
+		print_serial!("Frame allocated at {:?}\n", frame.unwrap());
 	}
 
 	/// Returns true if the entry is present in memory.

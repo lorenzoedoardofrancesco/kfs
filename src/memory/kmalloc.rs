@@ -3,7 +3,7 @@
 //! ksbrk adjusts the heap size, and ksize returns the size of an allocated block.
 
 use crate::memory::{
-	page_directory::{ENTRY_COUNT, PAGE_DIRECTORY, PAGE_SIZE},
+	page_directory::{self, ENTRY_COUNT, PAGE_DIRECTORY, PAGE_SIZE},
 	page_table_entry::PageTableFlags,
 	physical_memory_managment::{KERNEL_HEAP_END, KERNEL_HEAP_SIZE, KERNEL_HEAP_START, PMM},
 };
@@ -63,13 +63,21 @@ impl KmallocHeader {
 pub unsafe fn kernel_heap_init() {
 	println_serial!("Initializing kernel heap");
 	KERNEL_HEAP_BREAK = KERNEL_HEAP_START as *mut u8;
-	println_serial!("Initializing kernel heap");
+	println_serial!("Initializing kernel heap 1");
 
 	let header = KERNEL_HEAP_START as *mut KmallocHeader;
-	println_serial!("Initializing kernel heap");
+	println_serial!("Initializing kernel heap 2");
 
+	let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
+	page_directory
+		.get_page_table(KERNEL_HEAP_START as u32)
+		.get_page_table_entry(KERNEL_HEAP_START as u32)
+		.alloc_new();
+
+	println_serial!("Initializing kernel heap 3");
 	(*header).set_used(false);
-		println_serial!("Initializing kernel heap");
+
+	println_serial!("Initializing kernel heap 4");
 	(*header).set_size(KERNEL_HEAP_SIZE);
 
 	println_serial!("Heap Start: {:#010X}", KERNEL_HEAP_START as usize);
