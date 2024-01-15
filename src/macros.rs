@@ -109,47 +109,50 @@ macro_rules! handler {
 	}};
 }
 
-/// A ENLEVER SI ON ARRIVE PAS A ERROR CODE
 #[macro_export]
 macro_rules! handler_with_error_code {
-	($name: ident) => {{
-		#[naked]
-		#[no_mangle]
-		extern "C" fn wrapper() {
-			unsafe {
-				asm!(
-					// Set up stack frame
-					"push ebp",
-					"mov ebp, esp",
+    ($name: ident) => {{
+        #[naked]
+        #[no_mangle]
+        extern "C" fn wrapper() {
+            unsafe {
+                asm!(
+                    // Set up stack frame
+                    "push ebp",
+                    "mov ebp, esp",
+                    
+                    // Save all general-purpose registers
+                    "pushad",
 
-					// Save all general-purpose registers
-					"pushad",
+					// Retrieve error code
+					"mov edx, [esp + 36]",
 
 					// Calculate the correct stack frame pointer
-					"mov eax, esp",
-					"add eax, 40", // Adjust for 'pushad' and possibly other pushed registers
+                    "lea eax, [esp + 40]", // Adjust for 'pushad' and error code
+					"push edx", // Push error code
 					"push eax", // Push stack frame pointer
 
-					// Call the actual interrupt handler
-					"call {}",
+                    // Call the actual interrupt handler
+                    "call {}",
+
+					"pop eax", // Clean up the stack
+					"pop edx", // Clean the error code
 
 					// Restore all general-purpose registers
-					"pop eax", // Clean up the stack
 					"popad",
 
-					// Remove the error code from the stack
-					"add esp, 4",
-
-					// Restore base pointer and return from interrupt
-					"pop ebp",
-					"iretd",
-					sym $name,
-					options(noreturn)
-				);
-			}
-		}
-		wrapper as extern "C" fn()
-	}};
+                    "add esp, 4", // Remove error code from stack
+					
+                    // Restore base pointer and return from interrupt
+                    "pop ebp",
+                    "iretd", // Return from interrupt in 32-bit mode
+                    sym $name,
+                    options(noreturn)
+                );
+            }
+        }
+        wrapper as extern "C" fn()
+    }};
 }
 
 /// Prints formatted text to the VGA buffer.

@@ -6,10 +6,13 @@
 //! response to hardware and software interrupts.
 use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
 use crate::exceptions::pic8259::ChainedPics;
-use crate::memory::page_directory::{PAGE_DIRECTORY_ADDR, PageDirectory, PAGE_DIRECTORY, PAGE_TABLES, PAGE_TABLE_SIZE, PAGE_TABLES_ADDR, PAGE_SIZE};
+use crate::memory::page_directory::{
+	PageDirectory, PAGE_DIRECTORY, PAGE_DIRECTORY_ADDR, PAGE_SIZE, PAGE_TABLES, PAGE_TABLES_ADDR,
+	PAGE_TABLE_SIZE,
+};
 use crate::memory::page_table::PageTable;
-use crate::memory::page_table_entry::{PageTableFlags, PageTableEntry};
-use crate::memory::physical_memory_managment::{PMM_ADDRESS, PhysicalMemoryManager};
+use crate::memory::page_table_entry::{PageTableEntry, PageTableFlags};
+use crate::memory::physical_memory_managment::{PhysicalMemoryManager, PMM_ADDRESS};
 use crate::utils::debug::LogLevel;
 use crate::utils::io::inb;
 use core::arch::asm;
@@ -69,14 +72,14 @@ impl InterruptIndex {
 #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
-    // The following registers are pushed by the CPU automatically
-    pub eip: u32,    // Instruction pointer
-    pub cs: u32,     // Code segment
-    pub eflags: u32, // CPU flags
+	// The following registers are pushed by the CPU automatically
+	pub eip: u32,    // Instruction pointer
+	pub cs: u32,     // Code segment
+	pub eflags: u32, // CPU flags
 
-    // These are only present if the interrupt involved a privilege level change
-    pub esp: u32,    // Stack pointer (optional)
-    pub ss: u32,     // Stack segment (optional)
+	// These are only present if the interrupt involved a privilege level change
+	pub esp: u32, // Stack pointer (optional)
+	pub ss: u32,  // Stack segment (optional)
 }
 
 /// Handler functions for various interrupts.
@@ -166,55 +169,135 @@ pub extern "C" fn general_protection_fault(stack_frame: &mut InterruptStackFrame
 
 #[no_mangle]
 pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame, error_code: u32) {
-    // In 32-bit mode, the CR2 register (which contains the faulting address) is also 32 bits
-    let faulting_address: u32;
+	// log!(
+	// 	LogLevel::Info,
+	// 	"PAGE FAULT\n{:#x?}\nError Code: {:#x}",
+	// 	stack_frame,
+	// 	error_code
+	// );
 
-	println_serial!("Interrupt stack frame: {:#x}", stack_frame as *mut InterruptStackFrame as usize);
-	println_serial!("Error code: {:#x}", error_code);
+	let faulting_address: u32;
+	unsafe {
+		asm!("mov {}, cr2", out(reg) faulting_address, options(nostack, preserves_flags));
+	}
 
-    // Inline assembly to read from the CR2 register
-    unsafe {
-        asm!("mov {}, cr2", out(reg) faulting_address, options(nostack, preserves_flags));
-    }
+	let present = error_code & 0x1 != 0; // False if the page was not present
+	let write = error_code & 0x2 != 0; // True if it was a write operation, false for read
+	let user = error_code & 0x4 != 0; // True if the fault occurred in user mode
+	let reserved = error_code & 0x8 != 0; // True if caused by reserved bit violation
+	let instruction_fetch = error_code & 0x10 != 0; // True if caused by an instruction fetch
 
-    // The error code is directly provided as an argument to the function
-    let present = error_code & 0x1 != 0;
-    let write = error_code & 0x2 != 0;
-    let user = error_code & 0x4 != 0;
-	
-    log!(LogLevel::Error, "Page Fault at address {:#x}", faulting_address);
-    log!(LogLevel::Error, "Error Code: {}", error_code);
-    handle_not_present_page_fault(faulting_address as usize, write, user);
+	log!(
+		LogLevel::Alert,
+		"Page Fault at address {:#x}\tError Code: {:#x}",
+		faulting_address,
+		error_code
+	);
 
-    // Additional handling can be added here as required
+	if !present {
+		log!(LogLevel::Info, "Page not present");
+		handle_not_present_page_fault(faulting_address as usize, write, user);
+	} else {
+		if write {
+			log!(LogLevel::Error, "Attempted to write to a read-only page");
+		} else if user {
+			log!(
+				LogLevel::Error,
+				"Attempted to access kernel page from user mode"
+			);
+		} else if reserved {
+			log!(
+				LogLevel::Panic,
+				"Reserved bit violation in page table entry"
+			);
+			panic!("Kernel panic: Reserved bit violation");
+		} else if instruction_fetch {
+			log!(
+				LogLevel::Panic,
+				"Instruction fetch from a non-executable page"
+			);
+			panic!("Kernel panic: Attempted to execute non-executable memory");
+		} else {
+			log!(LogLevel::Error, "Unknown page fault");
+		}
+	}
+
+	// Additional handling can be added here as required
 }
 
-
 fn handle_not_present_page_fault(faulting_address: usize, write: bool, user: bool) {
-    let page_directory: &mut PageDirectory = unsafe { &mut *PAGE_DIRECTORY.load(Ordering::Relaxed) };
-
-    // Calculate the page directory index and page table index.
-    let pd_index = faulting_address >> 22;
-    let pt_index = (faulting_address >> 12) & 0x3FF;
+	// Calculate the page directory index and page table index.
+	let pd_index = faulting_address >> 22;
+	let pt_index = (faulting_address >> 12) & 0x3FF;
 
 	println_serial!("Page directory index: {}", pd_index);
 	println_serial!("Page table index: {}", pt_index);
 
-		// Check if the page table exists.
-    let page_table_addr = unsafe { PAGE_TABLES_ADDR + (pd_index * PAGE_SIZE) as u32 };
-	let page_table = unsafe { &mut *(page_table_addr as *mut PageTable) } ;
+	// Access the page table
+	let page_table_addr = unsafe { PAGE_TABLES_ADDR + (pd_index * PAGE_SIZE) as u32 };
+	let page_table = unsafe { &mut *(page_table_addr as *mut PageTable) };
 
-	// Allocate a new frame for the page.
+	// Allocate a new frame for the page
 	let pmm = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
-	let frame: u32 = pmm.allocate_frame().unwrap();
-	println_serial!("MIAOOO");
-	println_serial!("Page table address: {:#x}", page_table_addr);
-	let page_table_entry = (page_table_addr as usize + (pt_index * 4)) as *mut PageTableEntry;
-	println_serial!("Page table entry: {:#x}", page_table_entry as usize);
-	unsafe { (*page_table_entry).value = frame | PageTableFlags::PRESENT.bits() | PageTableFlags::WRITABLE.bits() };
-	println_serial!("Page table entry value: {:#x}", unsafe { (*page_table_entry).value });
-	//page_table.add_entry(pt_index, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+	match pmm.allocate_frame() {
+		Ok(frame) => {
+			println_serial!("Allocated frame: {:#x}", frame);
+
+			// Update the page table entry
+			let page_table_entry = &mut page_table.entries[pt_index];
+			page_table_entry
+				.set_frame_address(frame, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+			println_serial!("Updated page table entry: {:#x}", page_table_entry.value());
+
+			// Optionally, flush the TLB for the updated address here
+			unsafe {
+				let cr3: u32;
+				asm!("mov {}, cr3", out(reg) cr3);
+				asm!("mov cr3, {}", in(reg) cr3);
+			}
+		}
+		Err(e) => {
+			log!(
+				LogLevel::Error,
+				"Failed to allocate frame for page table entry: {}",
+				e
+			);
+			return;
+		}
+	}
 }
+
+// fn handle_not_present_page_fault(faulting_address: usize, write: bool, user: bool) {
+// 	let page_directory: &mut PageDirectory =
+// 		unsafe { &mut *PAGE_DIRECTORY.load(Ordering::Relaxed) };
+
+// 	// Calculate the page directory index and page table index.
+// 	let pd_index = faulting_address >> 22;
+// 	let pt_index = (faulting_address >> 12) & 0x3FF;
+
+// 	println_serial!("Page directory index: {}", pd_index);
+// 	println_serial!("Page table index: {}", pt_index);
+
+// 	// Check if the page table exists.
+// 	let page_table_addr = unsafe { PAGE_TABLES_ADDR + (pd_index * PAGE_SIZE) as u32 };
+// 	let page_table = unsafe { &mut *(page_table_addr as *mut PageTable) };
+
+// 	// Allocate a new frame for the page.
+// 	let pmm = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
+// 	let frame: u32 = pmm.allocate_frame().unwrap();
+// 	println_serial!("MIAOOO");
+// 	println_serial!("Page table address: {:#x}", page_table_addr);
+// 	let page_table_entry = (page_table_addr as usize + (pt_index * 4)) as *mut PageTableEntry;
+// 	println_serial!("Page table entry: {:#x}", page_table_entry as usize);
+// 	unsafe {
+// 		(*page_table_entry).value =
+// 			frame | PageTableFlags::PRESENT.bits() | PageTableFlags::WRITABLE.bits()
+// 	};
+// 	println_serial!("Page table entry value: {:#x}", unsafe {
+// 		(*page_table_entry).value
+// 	});
+// 	//page_table.add_entry(pt_index, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+// }
 
 pub extern "C" fn reserved(stack_frame: &mut InterruptStackFrame) {
 	log!(LogLevel::Info, "EXCEPTION: RESERVED\n{:#?}", stack_frame);
@@ -282,51 +365,51 @@ pub fn syscall_interrupt(_stack_frame: &mut InterruptStackFrame) {
 	};
 
 	unsafe {
-        asm!(
-            // Save registers into the struct fields
-            "mov [{}], eax",
-            "mov [{}], ebx",
-            "mov [{}], ecx",
-            "mov [{}], edx",
-            "mov [{}], esi",
-            "mov [{}], edi",
-            "mov [{}], ebp",
-            // Pointers to each field of the `registers` struct
-            in(reg) &mut registers.eax,
-            in(reg) &mut registers.ebx,
-            in(reg) &mut registers.ecx,
-            in(reg) &mut registers.edx,
-            in(reg) &mut registers.esi,
-            in(reg) &mut registers.edi,
-            in(reg) &mut registers.ebp,
-            options(preserves_flags, nostack)
-        );
-    }
+		asm!(
+			// Save registers into the struct fields
+			"mov [{}], eax",
+			"mov [{}], ebx",
+			"mov [{}], ecx",
+			"mov [{}], edx",
+			"mov [{}], esi",
+			"mov [{}], edi",
+			"mov [{}], ebp",
+			// Pointers to each field of the `registers` struct
+			in(reg) &mut registers.eax,
+			in(reg) &mut registers.ebx,
+			in(reg) &mut registers.ecx,
+			in(reg) &mut registers.edx,
+			in(reg) &mut registers.esi,
+			in(reg) &mut registers.edi,
+			in(reg) &mut registers.ebp,
+			options(preserves_flags, nostack)
+		);
+	}
 
-    // Call the syscall function with the registers
-    syscall(&mut registers);
+	// Call the syscall function with the registers
+	syscall(&mut registers);
 
-    unsafe {
-        asm!(
-            // Restore the register values from the struct fields
-            "mov eax, [{}]",
-            "mov ebx, [{}]",
-            "mov ecx, [{}]",
-            "mov edx, [{}]",
-            "mov esi, [{}]",
-            "mov edi, [{}]",
-            "mov ebp, [{}]",
-            // Pointers to each field of the `registers` struct
-            in(reg) &registers.eax,
-            in(reg) &registers.ebx,
-            in(reg) &registers.ecx,
-            in(reg) &registers.edx,
-            in(reg) &registers.esi,
-            in(reg) &registers.edi,
-            in(reg) &registers.ebp,
-            options(preserves_flags, nostack)
-        );
-    }
+	unsafe {
+		asm!(
+			// Restore the register values from the struct fields
+			"mov eax, [{}]",
+			"mov ebx, [{}]",
+			"mov ecx, [{}]",
+			"mov edx, [{}]",
+			"mov esi, [{}]",
+			"mov edi, [{}]",
+			"mov ebp, [{}]",
+			// Pointers to each field of the `registers` struct
+			in(reg) &registers.eax,
+			in(reg) &registers.ebx,
+			in(reg) &registers.ecx,
+			in(reg) &registers.edx,
+			in(reg) &registers.esi,
+			in(reg) &registers.edi,
+			in(reg) &registers.ebp,
+			options(preserves_flags, nostack)
+		);
+	}
 }
 
 /// Initializes the interrupt handlers.

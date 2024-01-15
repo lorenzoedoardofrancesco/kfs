@@ -77,4 +77,8 @@ impl PageTableEntry {
 	pub fn frame(&self) -> u32 {
 		self.value & PageTableFlags::FRAME.bits()
 	}
+
+	pub fn value(&self) -> u32 {
+		self.value
+	}
 }

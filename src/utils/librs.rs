@@ -158,9 +158,9 @@ fn print_hex_line(address: usize, count: usize, mode: PrintStackMode) {
 	}
 
 	// Print ASCII representation
-	for &byte in bytes {
-		let ch = if byte >= 32 && byte <= 127 {
-			byte as char
+	for i in 0..count {
+		let ch = if bytes[i] >= 0x20 && bytes[i] <= 0x7e {
+			bytes[i] as char
 		} else {
 			'.'
 		};
