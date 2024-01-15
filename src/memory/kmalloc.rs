@@ -63,8 +63,13 @@ impl KmallocHeader {
 pub unsafe fn kernel_heap_init() {
 	println_serial!("Initializing kernel heap");
 	KERNEL_HEAP_BREAK = KERNEL_HEAP_START as *mut u8;
+	println_serial!("Initializing kernel heap");
+
 	let header = KERNEL_HEAP_START as *mut KmallocHeader;
+	println_serial!("Initializing kernel heap");
+
 	(*header).set_used(false);
+		println_serial!("Initializing kernel heap");
 	(*header).set_size(KERNEL_HEAP_SIZE);
 
 	println_serial!("Heap Start: {:#010X}", KERNEL_HEAP_START as usize);
@@ -273,36 +278,6 @@ fn kbrk(increment: isize) -> *mut u8 {
 		while KERNEL_HEAP_BREAK < new_break {
 			let virtual_address = KERNEL_HEAP_BREAK as usize;
 
-			// Check if the current virtual address already has a mapped frame
-			let directory_index = virtual_address / (PAGE_SIZE * ENTRY_COUNT);
-			let page_table_index = (virtual_address % (PAGE_SIZE * ENTRY_COUNT)) / PAGE_SIZE;
-
-			let page_directory_ptr = PAGE_DIRECTORY.load(Ordering::SeqCst);
-			let mut page_table = (*page_directory_ptr).entries[directory_index].get_page_table();
-
-			// // If the page table does not exist, create it
-			// if page_table.is_none() {
-			// 	let new_table_frame = PMM
-			// 		.lock()
-			// 		.allocate_frame()
-			// 		.expect("Out of physical memory for page table");
-			// 	(*page_directory_ptr).entries[directory_index].set(
-			// 		new_table_frame,
-			// 		PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
-			// 	);
-			// 	page_table = (*page_directory_ptr).entries[directory_index].get_page_table();
-			// }
-
-			// // Check if the specific page within the table is mapped
-			// if let Some(ref mut page_table) = page_table {
-			// 	if page_table.entries[page_table_index].is_unused() {
-			// 		let page = PMM.lock().allocate_frame().expect("Out of physical memory");
-			// 		let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::SeqCst);
-			// 		page_directory.map(virtual_address as u32, page, PageDirectoryFlags::WRITABLE);
-			// 	}
-			// }
-
-			// Increment KERNEL_HEAP_BREAK by one page size until it reaches or surpasses new_break
 			KERNEL_HEAP_BREAK = KERNEL_HEAP_BREAK.offset(PAGE_SIZE as isize);
 
 			// Stop if we've reached or surpassed the new break point
