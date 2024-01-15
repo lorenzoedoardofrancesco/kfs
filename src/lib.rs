@@ -100,9 +100,9 @@ fn panic(info: &PanicInfo) -> ! {
 /// initializes the GDT, IDT, and interrupts, and displays a welcome message.
 fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	multiboot::validate_multiboot(multiboot_magic, multiboot_addr);
+	debug::init_serial_port();
 	gdt::init();
 	idt::init();
 	interrupts::init();
-	debug::init_serial_port();
 	prints::print_welcome_message();
 }

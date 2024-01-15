@@ -23,7 +23,8 @@ use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-const NUM_SCREENS: usize = 4;
+const NUM_SCREENS: usize = 5;
+const SERIAL_SCREEN: usize = 4;
 const VGA_BUFFER_SIZE: usize = VGA_COLUMNS * VGA_ROWS;
 
 const VGA_BUFFER_ADDRESS: usize = 0xb8000;
@@ -47,22 +48,32 @@ lazy_static! {
 		screen: [
 			ScreenState {
 				column_position: 0,
+				row_position: 0,
 				color: Color::new(ColorCode::Green, ColorCode::Black),
 				buffer: [0; VGA_BUFFER_SIZE],
 			},
 			ScreenState {
 				column_position: 0,
+				row_position: 0,
 				color: Color::new(ColorCode::Yellow, ColorCode::Brown),
 				buffer: [0; VGA_BUFFER_SIZE],
 			},
 			ScreenState {
 				column_position: 0,
+				row_position: 0,
 				color: Color::new(ColorCode::Black, ColorCode::LightCyan),
 				buffer: [0; VGA_BUFFER_SIZE],
 			},
 			ScreenState {
 				column_position: 0,
+				row_position: 0,
 				color: Color::new(ColorCode::Yellow, ColorCode::Red),
+				buffer: [0; VGA_BUFFER_SIZE],
+			},
+			ScreenState {
+				column_position: 0,
+				row_position: 0,
+				color: Color::new(ColorCode::LightGray, ColorCode::Black),
 				buffer: [0; VGA_BUFFER_SIZE],
 			},
 		],
@@ -147,6 +158,7 @@ impl VgaBuffer {
 
 struct ScreenState {
 	column_position: usize,
+	row_position: usize,
 	color: Color,
 	buffer: [u8; VGA_BUFFER_SIZE],
 }
@@ -168,6 +180,7 @@ pub struct Writer {
 pub enum WriteMode {
 	Normal,
 	Top,
+	Serial,
 }
 
 impl Writer {
@@ -175,6 +188,7 @@ impl Writer {
 		match self.mode {
 			WriteMode::Normal => self.write_byte_normal(byte),
 			WriteMode::Top => self.write_byte_top(byte),
+			WriteMode::Serial => self.write_byte_serial(byte),
 		}
 	}
 
@@ -217,6 +231,51 @@ impl Writer {
 
 				self.column_position += 1;
 			}
+		}
+	}
+
+	fn write_byte_serial(&mut self, byte: u8) {
+		if self.screen[SERIAL_SCREEN].column_position >= VGA_COLUMNS {
+			self.new_line_serial();
+		}
+
+		match byte {
+			b'\n' => self.new_line_serial(),
+			byte => {
+				self.screen[SERIAL_SCREEN].buffer[self.screen[SERIAL_SCREEN].row_position
+					* VGA_COLUMNS + self.screen[SERIAL_SCREEN]
+					.column_position] = byte;
+				self.screen[SERIAL_SCREEN].column_position += 1;
+			}
+		}
+	}
+
+	fn new_line_serial(&mut self) {
+		let serial_screen = &mut self.screen[SERIAL_SCREEN];
+		serial_screen.column_position = 0;
+		if serial_screen.row_position < VGA_ROWS - 1 {
+			serial_screen.row_position += 1;
+		} else {
+			self.scroll_screen_serial();
+		}
+	}
+
+	fn scroll_screen_serial(&mut self) {
+		let serial_screen = &mut self.screen[SERIAL_SCREEN];
+
+		for row in 1..VGA_ROWS {
+			for col in 0..VGA_COLUMNS {
+				let character = serial_screen.buffer[row * VGA_COLUMNS + col];
+				serial_screen.buffer[(row - 1) * VGA_COLUMNS + col] = character;
+			}
+		}
+
+		self.clear_line_serial(VGA_LAST_LINE);
+	}
+
+	fn clear_line_serial(&mut self, row: usize) {
+		for col in 0..VGA_COLUMNS {
+			self.screen[SERIAL_SCREEN].buffer[row * VGA_COLUMNS + col] = b' ';
 		}
 	}
 
@@ -280,7 +339,25 @@ impl Writer {
 		self.update_cursor(VGA_LAST_LINE, self.column_position);
 	}
 
+	pub fn hide_cursor(&self) {
+		unsafe {
+			outb(VGA_CTRL_REGISTER, 0x0a);
+			outb(VGA_DATA_REGISTER, 0x20);
+		}
+	}
+
+	pub fn show_cursor(&self) {
+		unsafe {
+			outb(VGA_CTRL_REGISTER, 0x0a);
+			outb(VGA_DATA_REGISTER, 0x0e);
+		}
+	}
+
 	pub fn update_cursor(&mut self, row: usize, column: usize) {
+		if self.current_display == SERIAL_SCREEN {
+			return;
+		}
+
 		let position: u16 = (row * VGA_COLUMNS + column) as u16;
 
 		unsafe {
@@ -358,7 +435,11 @@ pub fn change_display(display: usize) {
 	WRITER.lock().backup_display();
 	WRITER.lock().restore_display(display);
 	WRITER.lock().current_display = display;
-	prompt::init();
+	if display != SERIAL_SCREEN {
+		prompt::init();
+	} else {
+		WRITER.lock().clear_row(VGA_LAST_LINE);
+	}
 }
 
 /// Changes the current color of the VGA text buffer.

@@ -30,7 +30,7 @@ macro_rules! println {
 }
 
 /// Macro for printing formatted text to the top of the VGA buffer.
-/// 
+///
 /// This macro uses the global `WRITER` instance to output text to the top of the VGA text buffer.
 #[macro_export]
 macro_rules! print_top {
@@ -53,8 +53,17 @@ macro_rules! print_serial {
 ///
 /// Similar to `println!`, but for serial output. Appends a newline and carriage return.
 macro_rules! println_serial {
-	() => (print_serial!("\n\r"));
-	($($arg:tt)*) => (print_serial!("{}\n\r", format_args!($($arg)*)));
+	() => (print_serial!("\n"));
+	($($arg:tt)*) => (print_serial!("{}\n", format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! log {
+    ($level:expr, $($arg:tt)*) => {{
+        let level_str = $level.as_str();
+        $crate::macros::print_serial(format_args!("{}", level_str));
+        $crate::macros::print_serial(format_args!(": {}\n", format_args!($($arg)*)));
+    }};
 }
 
 /// Macro for creating interrupt handler wrappers.
@@ -114,7 +123,7 @@ pub fn print(args: fmt::Arguments) {
 }
 
 /// Prints formatted text to the top of the VGA buffer.
-/// 
+///
 /// Disables interrupts, writes formatted text to the top of the VGA buffer, and then re-enables interrupts.
 /// This is used by the `print_top!` macro for actual printing.
 pub fn print_top(args: fmt::Arguments) {
@@ -133,6 +142,14 @@ pub fn print_top(args: fmt::Arguments) {
 pub fn print_serial(args: fmt::Arguments) {
 	use core::fmt::Write;
 	interrupts::disable();
-	DEBUG.lock().write_fmt(args).unwrap();
+	let mut debug = DEBUG.lock();
+	let mut writer = WRITER.lock();
+
+	debug.write_fmt(args).expect("Printing to serial failed");
+	writer.set_mode(WriteMode::Serial);
+	writer
+		.write_fmt(args)
+		.expect("Writing to serial screen failed");
+	writer.set_mode(WriteMode::Normal);
 	interrupts::enable();
 }

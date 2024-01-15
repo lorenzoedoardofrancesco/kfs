@@ -6,6 +6,8 @@
 
 use crate::exceptions::interrupts;
 use crate::shell::builtins::clear;
+use crate::structures::gdt::GDT;
+use crate::structures::idt::IDT;
 use crate::utils::librs::hexdump;
 use crate::vga::prompt;
 use crate::vga::video_graphics_array::WRITER;
@@ -56,8 +58,6 @@ pub enum PrintStackMode {
 /// Extracts and displays a hexadecimal dump of the current stack.
 /// Useful for debugging purposes.
 pub fn print_stack(line: &str, mode: PrintStackMode) {
-	use core::ptr;
-
 	let trimmed_line = match mode {
 		PrintStackMode::Vga => line["stack".len()..].trim(),
 		PrintStackMode::Serial => line["hexdump".len()..].trim(),
@@ -70,39 +70,35 @@ pub fn print_stack(line: &str, mode: PrintStackMode) {
 	// Determine the address to use for the hex dump
 	let address = match parts.next() {
 		Some("esp") => {
-			let esp: u32;
+			let esp: usize;
 			unsafe {
 				core::arch::asm!("mov {}, esp", out(reg) esp);
 			}
 			esp
 		}
 		Some("gdt") => {
-			let mut gdtr: [u8; 6] = [0; 6];
-			let offset: u32;
-			unsafe {
-				core::arch::asm!(
-					"sgdt [{}]",
-					in(reg) &mut gdtr,
-					options(nostack, preserves_flags)
-				);
-				offset = ptr::read_unaligned(gdtr.as_ptr().add(2) as *const u32);
-			}
-			offset
+			GDT.as_ptr() as usize
 		}
 		Some("idt") => {
-			let mut idtr: [u8; 6] = [0; 6];
-			let offset: u32;
+			let offset: usize;
 			unsafe {
-				core::arch::asm!(
-					"sidt [{}]",
-					in(reg) &mut idtr,
-					options(nostack, preserves_flags)
-				);
-				offset = ptr::read_unaligned(idtr.as_ptr().add(2) as *const u32);
+				offset = IDT.as_ptr() as usize;
 			}
 			offset
 		}
-		Some(addr_str) => u32::from_str_radix(addr_str, 16).unwrap_or(0),
+		Some("cr3") => {
+			let cr3: usize;
+			unsafe {
+				core::arch::asm!("mov {}, cr3", out(reg) cr3);
+			}
+			println_serial!("cr3: {:x}", cr3);
+						let esp: usize;
+			unsafe {
+				core::arch::asm!("mov {}, esp", out(reg) esp);
+			}
+			esp
+		}
+		Some(addr_str) => usize::from_str_radix(addr_str, 16).unwrap_or(0),
 		None => 0,
 	};
 
@@ -116,12 +112,12 @@ pub fn print_stack(line: &str, mode: PrintStackMode) {
 
 /// Prints a formatted line in the help menu.
 pub fn print_help_line(command: &str, description: &str) {
-	print!("  {:13}", command);
+	print!("  {:21}", command);
 	printraw("Z");
-	print!("  {:60}", description);
-	if command == "shutdown" {
+	print!("  {:52}", description);
+	if command == "shutdown | reboot" {
 		printraw("Z");
-	} else if command != "F12" {
+	} else if command != "F11 | F12" {
 		printraw("ZZ");
 	}
 }
@@ -131,26 +127,29 @@ pub fn help() {
 	clear();
 	printraw("immmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm[Z");
 	print!(" Available commands                                                           ");
-	printraw("ZlmmmmmmmmmmmmmmmkmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
+	printraw("ZlmmmmmmmmmmmmmmmmmmmmmmmkmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
 	print_help_line("echo", "display a line of text");
 	print_help_line("clear", "clear the screen");
-	print_help_line("stack", "print the stack");
+	print_help_line("stack ", "print the stack");
 	print_help_line("hexdump", "print to the serial COM a hexdump of memory");
-	print_help_line("date | time", "display the current date or time");
+	print_help_line(
+		"date | time | uptime",
+		"display the current date | time | uptime",
+	);
+	print_help_line("cpu", "display the CPU information");
+	print_help_line("mode", "display the current system mode");
 	print_help_line("miao", "print a cat");
 	print_help_line("uname", "print system information");
 	print_help_line("halt", "halt the system");
-	print_help_line("reboot", "reboot the system");
-	print_help_line("shutdown", "shutdown the system");
-	printraw("lmmmmmmmmmmmmmmmnmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
-	print_help_line("F1-F4", "change between screens");
+	print_help_line("shutdown | reboot", "shutdown | reboot the system");
+	printraw("lmmmmmmmmmmmmmmmmmmmmmmmnmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
+	print_help_line("F1 -> F5", "change between screens");
 	print_help_line("F8", "parrot stroke activated");
 	print_help_line("F9", "display welcome message");
 	print_help_line("F10", "change keyboard layout");
-	print_help_line("F11", "switch text color");
-	print_help_line("F12", "switch background color");
+	print_help_line("F11 | F12", "switch text | background color");
 
-	printraw("ZlmmmmmmmmmmmmmmmjmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
+	printraw("ZlmmmmmmmmmmmmmmmmmmmmmmmjmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmYZ");
 	print!(
 		" Type 'history' to view command history           {} {} navigate history        ",
 		0x1e as char, 0x1f as char

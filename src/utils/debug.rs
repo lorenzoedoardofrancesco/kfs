@@ -12,6 +12,35 @@ use spin::Mutex;
 
 const SERIAL_PORT: u16 = 0x3f8;
 
+#[allow(dead_code)]
+pub enum LogLevel {
+	Panic,
+	Emergency,
+	Alert,
+	Critical,
+	Error,
+	Warning,
+	Notice,
+	Info,
+	Debug,
+}
+
+impl LogLevel {
+	pub fn as_str(self) -> &'static str {
+		match self {
+			LogLevel::Panic => "PANIC",
+			LogLevel::Emergency => "EMERGENCY",
+			LogLevel::Alert => "ALERT",
+			LogLevel::Critical => "CRITICAL",
+			LogLevel::Error => "ERROR",
+			LogLevel::Warning => "WARNING",
+			LogLevel::Notice => "NOTICE",
+			LogLevel::Info => "INFO",
+			LogLevel::Debug => "DEBUG",
+		}
+	}
+}
+
 lazy_static! {
 	pub static ref DEBUG: Mutex<Debug> = Mutex::new(Debug {});
 }
@@ -33,6 +62,9 @@ impl Debug {
 	pub fn write_string_serial(&self, s: &str) {
 		for byte in s.bytes() {
 			self.write_byte_serial(byte);
+			if byte == b'\n' {
+				self.write_byte_serial(b'\r');
+			}
 		}
 	}
 }
@@ -54,5 +86,5 @@ pub fn init_serial_port() {
 		outb(SERIAL_PORT + 2, 0xc7);
 		outb(SERIAL_PORT + 4, 0x0b);
 	}
-	println_serial!("Serial port initialized");
+	log!(LogLevel::Info, "Serial port initialized")
 }

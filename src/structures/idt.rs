@@ -23,6 +23,7 @@ use crate::exceptions::interrupts::{
 	simd_floating_point_exception, stack_fault, timer_interrupt, virtualization_exception,
 };
 use core::arch::asm;
+use crate::utils::debug::LogLevel;
 
 /// Represents an Interrupt Descriptor Table (IDT) entry.
 ///
@@ -30,7 +31,7 @@ use core::arch::asm;
 /// to various interrupt and exception conditions.
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
-struct IdtDescriptor {
+pub struct IdtDescriptor {
 	offset_low: u16,
 	selector: u16,
 	reserved: u8,
@@ -134,7 +135,7 @@ static KEYBOARD_INTERRUPT: extern "C" fn() = handler!(keyboard_interrupt);
 ///
 /// This block sets up the IDT with predefined entries for standard interrupts
 #[link_section = ".idt"]
-static mut IDT: [IdtDescriptor; 256] = {
+pub static mut IDT: [IdtDescriptor; 256] = {
 	let idt = [create_idt_entry!(0, 0, 0); 256];
 	idt
 };
@@ -197,6 +198,10 @@ pub fn init() {
 
 		asm!("lidt [{}]", in(reg) &idt_register, options(readonly, nostack, preserves_flags));
 
-		println_serial!("IDT successfully loaded");
+		log!(
+			LogLevel::Info,
+			"IDT successfully loaded at 0x{:08x}",
+			IDT.as_ptr() as u32
+		);
 	}
 }

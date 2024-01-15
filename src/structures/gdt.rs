@@ -15,6 +15,7 @@ use crate::structures::accessflags::{
 	KERNEL_CODE_SEGMENT, KERNEL_DATA_SEGMENT, KERNEL_STACK_SEGMENT, MAX_SEGMENT_SIZE, NO_OFFSET,
 	NULL_SEGMENT, SEGMENT_FLAGS, USER_CODE_SEGMENT, USER_DATA_SEGMENT, USER_STACK_SEGMENT,
 };
+use crate::utils::debug::LogLevel;
 use core::arch::asm;
 
 /// Represents an entry in the Global Descriptor Table (GDT).
@@ -22,7 +23,7 @@ use core::arch::asm;
 /// Each GDT entry is used to define the characteristics of a memory segment,
 /// including its size, base address, and access rights.
 #[repr(C, packed)]
-struct GdtEntry {
+pub struct GdtEntry {
 	limit_low: u16,
 	base_low: u16,
 	base_middle: u8,
@@ -59,7 +60,7 @@ macro_rules! create_gdt_entry {
 /// This block sets up the GDT with predefined segments for kernel and user
 /// modes, including code, data, and stack segments.
 #[link_section = ".gdt"]
-static GDT: [GdtEntry; 7] = [
+pub static GDT: [GdtEntry; 7] = [
 	create_gdt_entry!(0, 0, NULL_SEGMENT, 0, "NULL segment"),
 	create_gdt_entry!(
 		MAX_SEGMENT_SIZE,
@@ -127,12 +128,61 @@ fn load_gdt() {
 	}
 }
 
-/// Loads the GDT into the CPU's GDTR register.
+/// Loads the data segments.
+///
+/// This function updates the data segment registers (ds, es, fs, gs)
+/// of the CPU to use the segments defined in the GDT.
 ///
 /// # Safety
 ///
-/// This function is unsafe because it directly manipulates CPU registers.
-fn load_segment_registers() {
+/// This function is unsafe because it directly manipulates CPU segment registers.
+fn load_data_segments() {
+	unsafe {
+		asm!(
+			"mov ax, 0x10", // Kernel data segments
+			"mov ds, ax",
+			"mov es, ax",
+			"mov fs, ax",
+			"mov gs, ax",
+			options(nostack, preserves_flags)
+		);
+	}
+}
+
+/// Loads the stack segment.
+///
+/// This function updates the stack segment register (ss) of the CPU
+/// to use the segment defined in the GDT. This is crucial for ensuring
+/// that the CPU uses the correct stack for operations after this point.
+///
+/// # Safety
+///
+/// This function is unsafe because it directly manipulates the CPU's
+/// stack segment register, which is critical for proper CPU operations.
+fn load_stack_segment() {
+	unsafe {
+		asm!(
+			"mov ax, 0x18", // Kernel stack segment
+			"mov ss, ax",
+			options(nostack, preserves_flags)
+		);
+	}
+}
+
+/// Loads the code segment.
+///
+/// This function updates the code segment register (cs) of the CPU.
+/// It requires a far jump to ensure that the CPU starts fetching
+/// and decoding instructions from the new code segment as defined
+/// in the GDT. This is essential for the CPU to execute subsequent
+/// instructions correctly.
+///
+/// # Safety
+///
+/// This function is unsafe because it involves a far jump which
+/// changes the code segment register (cs). Incorrectly setting the
+/// code segment can lead to undefined and erroneous CPU behavior.
+fn load_code_segment() {
 	unsafe {
 		asm!(
 			"push 0x08", // Kernel code segment
@@ -140,13 +190,6 @@ fn load_segment_registers() {
 			"push eax",
 			"retf",
 			"1:",
-			"mov ax, 0x10", // Kernel data segment
-			"mov ds, ax",
-			"mov es, ax",
-			"mov fs, ax",
-			"mov gs, ax",
-			"mov ax, 0x18", // Kernel stack segment
-			"mov ss, ax",
 			options(nostack, preserves_flags)
 		);
 	}
@@ -158,8 +201,17 @@ fn load_segment_registers() {
 /// loads it into the CPU. It also updates the segment registers
 /// to use the new segments.
 pub fn init() {
-	println_serial!("Initializing GDT");
 	load_gdt();
-	load_segment_registers();
-	println_serial!("\n\rGDT successfully loaded")
+	log!(
+		LogLevel::Info,
+		"GDT successfully loaded at 0x{:08x}",
+		GDT.as_ptr() as usize
+	);
+	load_data_segments();
+	load_stack_segment();
+	load_code_segment();
+	log!(
+		LogLevel::Info,
+		"Kernel data, stack and code segments successfully loaded"
+	);
 }

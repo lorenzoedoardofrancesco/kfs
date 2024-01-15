@@ -2,10 +2,12 @@ use crate::shell;
 use crate::shell::history::HISTORY;
 use crate::shell::prints::print_welcome_message;
 use crate::vga::parrot::PARROT_ACTIVATED;
+use crate::vga::video_graphics_array::WRITER;
 use crate::vga::{prompt, video_graphics_array};
 use core::sync::atomic::{AtomicBool, Ordering};
 
 pub static KEYBOARD_INTERRUPT_RECEIVED: AtomicBool = AtomicBool::new(false);
+static SERIAL_SCREEN: AtomicBool = AtomicBool::new(false);
 
 static ESCAPE_PREFIX_RECEIVED: AtomicBool = AtomicBool::new(false);
 static SHIFT_PRESSED: AtomicBool = AtomicBool::new(false);
@@ -35,8 +37,16 @@ pub fn process_keyboard_input() {
 
 	let parrot_activated = PARROT_ACTIVATED.load(Ordering::SeqCst);
 	if parrot_activated {
+		WRITER.lock().show_cursor();
 		PARROT_ACTIVATED.store(false, Ordering::SeqCst);
 		prompt::init();
+	}
+
+	let serial_screen = SERIAL_SCREEN.load(Ordering::SeqCst);
+	if serial_screen {
+		WRITER.lock().show_cursor();
+		SERIAL_SCREEN.store(false, Ordering::SeqCst);
+		video_graphics_array::change_display(0);
 	}
 
 	unsafe {
@@ -129,12 +139,17 @@ fn update_modifier_state(scancode: u8) {
 			0x3c => video_graphics_array::change_display(1),
 			0x3d => video_graphics_array::change_display(2),
 			0x3e => video_graphics_array::change_display(3),
-			// 0x3f F5
+			0x3f => video_graphics_array::change_display(4),
 			// 0x40 F6
 			// 0x41 F7
 			// 0x42 F8
+			0xbf => {
+				SERIAL_SCREEN.store(true, Ordering::SeqCst);
+				WRITER.lock().hide_cursor();
+			}
 			0xc2 => {
 				PARROT_ACTIVATED.store(true, Ordering::SeqCst);
+				WRITER.lock().hide_cursor();
 			}
 			0x43 => print_welcome_message(),
 			0x44 => change_keyboard_layout(),

@@ -6,7 +6,9 @@
 //! response to hardware and software interrupts.
 use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
 use crate::exceptions::pic8259::ChainedPics;
+use crate::utils::debug::LogLevel;
 use crate::utils::io::inb;
+use core::arch::asm;
 use core::sync::atomic::{AtomicU32, Ordering};
 use spin::Mutex;
 
@@ -199,15 +201,20 @@ pub fn init() {
 	unsafe {
 		PICS.lock().initialize();
 	}
+	log!(
+		LogLevel::Info,
+		"PIC successfully initialized (Master: {:#x}, Slave: {:#x})",
+		PIC_1_OFFSET,
+		PIC_1_OFFSET + 8
+	);
 	enable();
-	//println_serial!("Interrupts successfully initialized");
+	log!(LogLevel::Info, "Interrupts successfully enabled");
 }
 
 /// Enables interrupts on the CPU.
 ///
 /// This function enables interrupts on the CPU by setting the interrupt flag in the CPU's flags register.
 pub fn enable() {
-	use core::arch::asm;
 	unsafe {
 		asm!("sti", options(preserves_flags, nostack));
 	}
@@ -217,7 +224,6 @@ pub fn enable() {
 ///
 /// This function disables interrupts on the CPU by clearing the interrupt flag in the CPU's flags register.
 pub fn disable() {
-	use core::arch::asm;
 	unsafe {
 		asm!("cli", options(preserves_flags, nostack));
 	}
