@@ -160,7 +160,6 @@ pub fn read_multiboot_info(address: u32) {
 	let mut tag: &MultibootTag = unsafe { &*current_tag };
 
 	let mut meminfo: Option<&MultibootTagBasicMemInfo> = None;
-	let mut pmm = PMM.lock();
 
 	while tag.tag_type != MULTIBOOT_TAG_TYPE_END {
 		//println_serial!("Tag {:#x} size: {:#x}", tag.tag_type, tag.size);
@@ -202,8 +201,8 @@ pub fn read_multiboot_info(address: u32) {
 				let memory_map_entries = unsafe {
 					core::slice::from_raw_parts(nmap_tag.entries.as_ptr(), entries_count as usize)
 				};
-				pmm.memory_map_tag = Some(nmap_tag);
-				pmm.memory_map_entries = Some(memory_map_entries);
+				PMM.lock().memory_map_tag = Some(nmap_tag);
+				PMM.lock().memory_map_entries = Some(memory_map_entries);
 			}
 			_ => {}
 		}

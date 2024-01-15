@@ -238,8 +238,10 @@ fn handle_not_present_page_fault(faulting_address: usize, write: bool, user: boo
 	let page_table = unsafe { &mut *(page_table_addr as *mut PageTable) };
 
 	// Allocate a new frame for the page
-	let mut pmm = PMM.lock();
-	match pmm.allocate_frame() {
+	println_serial!("Page table address: {:#x}, page_table ", page_table_addr);
+	println_serial!("Page table address: {:#x}, page_table ", page_table_addr);
+	let frame = PMM.lock().allocate_frame();
+	match frame {
 		Ok(frame) => {
 			println_serial!("Allocated frame: {:#x}", frame);
 

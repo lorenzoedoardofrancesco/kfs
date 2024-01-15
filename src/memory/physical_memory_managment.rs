@@ -23,6 +23,7 @@ const KERNEL_SPACE_START: u32 = HIGH_KERNEL_OFFSET;
 const KERNEL_SPACE_END: u32 = 0xFFFFFFFF;
 
 pub static mut PMM_ADDRESS: u32 = 0;
+pub static mut PAGE_TABLE_END: u32 = 0;
 
 pub static mut MEMORY_MAP: u32 = 0;
 #[derive(Clone, Copy, Debug)]
@@ -74,15 +75,13 @@ impl PhysicalMemoryManager {
 		let memory_map_size = max_blocks / PMMNGR_BLOCKS_PER_INDEX;
 
 		println_serial!("Initializing Physical Memory Manager");
-		println_serial!("PMM struct {:?}", self);
-		println_serial!("PMM memory size: {:#x}", self.memory_size);
 		unsafe {
 			MEMORY_MAP = &_kernel_end as *const u8 as u32;
 			PMM_ADDRESS = align_up(MEMORY_MAP + memory_map_size);
 			PAGE_DIRECTORY_ADDR = align_up(PMM_ADDRESS + size_of::<PhysicalMemoryManager>() as u32);
 			PAGE_TABLES_ADDR = PAGE_DIRECTORY_ADDR + 0x1000;
-			//KERNEL_HEAP_START = (PAGE_TABLES_ADDR + PAGE_TABLE_SIZE as u32 + 0x1000) as *mut u8;	
-
+			PAGE_TABLE_END = (PAGE_TABLES_ADDR + PAGE_TABLE_SIZE as u32 + 0x1000);	
+			
 			println_serial!("User space start:         {:#x}", USER_SPACE_START);
 			println_serial!("User space end:           {:#x}", USER_SPACE_END);
 			println_serial!("Kernel space start:       {:#x}", KERNEL_SPACE_START);
@@ -94,32 +93,32 @@ impl PhysicalMemoryManager {
 			println_serial!("Kernel heap end:          {:#x}", KERNEL_HEAP_END as u32);
 			println_serial!("Kernel space end:         {:#x}", KERNEL_SPACE_END);
 		}
-
+		
 		self.memory_map = unsafe {
 			core::slice::from_raw_parts_mut(MEMORY_MAP as *mut u32, memory_map_size as usize)
 		};
 		self.memory_map_size = memory_map_size;
 		self.max_blocks = self.memory_size / PMMNGR_BLOCK_SIZE;
-
+		
 		println_serial!(
 			"Memory size: {:#x}, max blocks: {:#x}, memory map size: {:#x}",
 			self.memory_size,
 			self.max_blocks,
 			self.memory_map_size
 		);
-
+		
 		self.memory_map = unsafe {
 			core::slice::from_raw_parts_mut(
 				&_kernel_end as *const u8 as *mut u32,
 				self.memory_map_size as usize,
 			)
 		};
-
+		
 		for i in 0..self.memory_map_size as usize {
 			self.memory_map[i] = USED_BLOCK;
 		}
 		self.used_blocks = self.max_blocks;
-
+		
 		for i in 1..self.usable_regions.len() {
 			let region = self.usable_regions[i];
 			if region.size == 0 {
@@ -129,10 +128,12 @@ impl PhysicalMemoryManager {
 		}
 		// Set the kernel space as used
 		self.set_region_as_unavailable(KERNEL_SPACE_START - HIGH_KERNEL_OFFSET, unsafe {
-			KERNEL_HEAP_START as u32 - KERNEL_SPACE_START - 1
+			PAGE_TABLE_END as u32 - KERNEL_SPACE_START - 1
 		});
+		println_serial!("PMM struct {:?}", self);
+		println_serial!("PMM memory size: {:#x}", self.memory_size);
 	}
-
+	
 	/// Sets a bit in the memory map.
 	fn mmap_set(&mut self, bit: u32) {
 		let index = bit / 32;
@@ -344,12 +345,10 @@ impl PhysicalMemoryManager {
 }
 
 pub fn physical_memory_manager_init() {
-	let mut pmm = PMM.lock();
-
-	pmm.process_memory_map();
-	pmm.init();
+	PMM.lock().process_memory_map();
+	PMM.lock().init();
 	unsafe {
-		kernel_heap_init();
+		//kernel_heap_init();
 	}
 	//pmm.print_memory_map();
 }
