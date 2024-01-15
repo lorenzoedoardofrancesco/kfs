@@ -36,11 +36,9 @@ impl PageDirectory {
 pub fn enable_paging() {
 	println_serial!("Enabling paging...");
 	let page_directory_addr = unsafe { PAGE_DIRECTORY_ADDR - HIGH_KERNEL_OFFSET };
-	println_serial!("Page Directory address: {:x}", page_directory_addr);
 	unsafe {
-		let pd_addr: u32 = 1470464; // Your page directory address
-		asm!("mov cr3, {}", in(reg) pd_addr);
-		asm!("mov cr3, {}", in(reg) pd_addr);
+		asm!("mov cr3, {}", in(reg) page_directory_addr);
+		asm!("mov cr3, {}", in(reg) page_directory_addr);
 	}
 
 	print_serial!("Mapping page tables...");
@@ -56,7 +54,7 @@ pub fn enable_paging() {
 pub unsafe fn init_page_directory() {
 	PAGE_DIRECTORY = AtomicPtr::new(PAGE_DIRECTORY_ADDR as *mut PageDirectory);
 	let page_directory = &mut *PAGE_DIRECTORY.load(Ordering::Relaxed);
-	println_serial!("Page Directory address: {:p}", page_directory);
+	println_serial!("Page Directory __ : {:p}", page_directory);
 
 	// Initialize all directory entries and page tables
 	let mut current_page_table = PAGE_TABLES_ADDR;

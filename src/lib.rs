@@ -81,7 +81,7 @@ pub extern "C" fn _start(multiboot_magic: u32, multiboot_addr: u32) -> ! {
 	//crate::memory::kmalloc::kmalloc_tester();
 	//PMM.lock().print_memory_map();
 	unsafe {
-		//memory_management_tester();
+		memory_management_tester();
 	}
 	loop {
 		process_keyboard_input();

@@ -5,14 +5,12 @@
 use crate::memory::{
 	page_directory::{ENTRY_COUNT, PAGE_DIRECTORY, PAGE_SIZE},
 	page_table_entry::PageTableFlags,
-	physical_memory_managment::{KERNEL_HEAP_SIZE, PMM},
+	physical_memory_managment::{KERNEL_HEAP_END, KERNEL_HEAP_SIZE, KERNEL_HEAP_START, PMM},
 };
 use bitflags::bitflags;
 use core::ptr;
 use core::sync::atomic::Ordering;
 
-pub static mut KERNEL_HEAP_START: *mut u8 = 0 as *mut u8;
-pub static mut KERNEL_HEAP_END: *mut u8 = 0 as *mut u8;
 pub static mut KERNEL_HEAP_BREAK: *mut u8 = ptr::null_mut();
 
 const MIN_ALLOCATION_SIZE: u32 = 32;
@@ -63,7 +61,8 @@ impl KmallocHeader {
 }
 
 pub unsafe fn kernel_heap_init() {
-	KERNEL_HEAP_BREAK = KERNEL_HEAP_START;
+	println_serial!("Initializing kernel heap");
+	KERNEL_HEAP_BREAK = KERNEL_HEAP_START as *mut u8;
 	let header = KERNEL_HEAP_START as *mut KmallocHeader;
 	(*header).set_used(false);
 	(*header).set_size(KERNEL_HEAP_SIZE);
@@ -102,8 +101,8 @@ pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 		return Err("kmalloc | Attempted to allocate invalid size");
 	}
 
-	let mut current = KERNEL_HEAP_START;
-	while current < KERNEL_HEAP_END {
+	let mut current = KERNEL_HEAP_START as *mut u8;
+	while current < KERNEL_HEAP_END as *mut u8 {
 		let header = current as *mut KmallocHeader;
 		if (*header).used() == false && (*header).size() >= size {
 			if current.add(size as usize) > KERNEL_HEAP_BREAK {
@@ -137,7 +136,7 @@ pub unsafe fn kmalloc(mut size: u32) -> Result<*mut u8, &'static str> {
 ///
 /// * `ptr` - A pointer to the memory block to be freed.
 pub unsafe fn kfree(ptr: *mut u8) {
-	if ptr < KERNEL_HEAP_START || ptr >= KERNEL_HEAP_END {
+	if ptr < KERNEL_HEAP_START as *mut u8 || ptr >= KERNEL_HEAP_END as *mut u8 {
 		panic!(
 			"kfree | Attempted to free invalid pointer: {:#010X}",
 			ptr as usize
@@ -146,7 +145,7 @@ pub unsafe fn kfree(ptr: *mut u8) {
 
 	let header_ptr = ptr.sub(KMALLOC_HEADER_SIZE) as *mut KmallocHeader;
 
-	let mut current = KERNEL_HEAP_START;
+	let mut current = KERNEL_HEAP_START as *mut u8;
 	while current <= header_ptr as *mut u8 {
 		let header = current as *mut KmallocHeader;
 		if header == header_ptr {
@@ -203,10 +202,10 @@ fn free_empty_pages(ptr: *mut KmallocHeader) {
 pub unsafe fn kdefrag() {
 	let mut header = KERNEL_HEAP_START as *mut KmallocHeader;
 
-	while (header as *mut u8) < KERNEL_HEAP_END {
+	while (header as *mut u8) < KERNEL_HEAP_END as *mut u8 {
 		let next_header = (header as *mut u8).add((*header).size() as usize) as *mut KmallocHeader;
 
-		if (next_header as *mut u8) >= KERNEL_HEAP_END {
+		if (next_header as *mut u8) >= KERNEL_HEAP_END as *mut u8 {
 			break;
 		}
 
@@ -236,10 +235,10 @@ fn free_unused_frames() {
 
 fn get_last_used_address() -> *mut u8 {
 	unsafe {
-		let mut current = KERNEL_HEAP_START;
-		let mut last_used = KERNEL_HEAP_START;
+		let mut current = KERNEL_HEAP_START as *mut u8;
+		let mut last_used = KERNEL_HEAP_START as *mut u8;
 
-		while current < KERNEL_HEAP_END {
+		while current < KERNEL_HEAP_END as *mut u8 {
 			let header = current as *mut KmallocHeader;
 			if (*header).used() {
 				last_used = current;
@@ -267,7 +266,7 @@ fn get_last_used_address() -> *mut u8 {
 fn kbrk(increment: isize) -> *mut u8 {
 	unsafe {
 		let new_break = KERNEL_HEAP_BREAK.offset(increment);
-		if new_break > KERNEL_HEAP_END {
+		if new_break > KERNEL_HEAP_END as *mut u8 {
 			panic!("Out of heap memory");
 		}
 
@@ -326,7 +325,7 @@ fn kbrk(increment: isize) -> *mut u8 {
 ///
 /// The size of the allocated memory block.
 pub unsafe fn ksize(ptr: *mut u8) -> usize {
-	if ptr.is_null() || ptr < KERNEL_HEAP_START || ptr >= KERNEL_HEAP_END {
+	if ptr.is_null() || ptr < KERNEL_HEAP_START as *mut u8 || ptr >= KERNEL_HEAP_END as *mut u8 {
 		panic!(
 			"ksize | Attempted to get size of invalid pointer: {:#010X}",
 			ptr as usize
@@ -368,7 +367,7 @@ pub unsafe fn ksize(ptr: *mut u8) -> usize {
 
 pub fn kprint_heap() {
 	unsafe {
-		let mut current = KERNEL_HEAP_START;
+		let mut current = KERNEL_HEAP_START as *mut u8;
 		// println_serial!("Heap Start: {:#010X}", KERNEL_HEAP_START as usize);
 		// println_serial!("Heap End: {:#010X}", KERNEL_HEAP_END as usize);
 		// println_serial!("Kernel Heap Break: {:#010X}", KERNEL_HEAP_BREAK as usize);

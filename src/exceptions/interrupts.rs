@@ -12,7 +12,7 @@ use crate::memory::page_directory::{
 };
 use crate::memory::page_table::PageTable;
 use crate::memory::page_table_entry::{PageTableEntry, PageTableFlags};
-use crate::memory::physical_memory_managment::{PhysicalMemoryManager, PMM_ADDRESS};
+use crate::memory::physical_memory_managment::{PhysicalMemoryManager, PMM};
 use crate::utils::debug::LogLevel;
 use crate::utils::io::inb;
 use core::arch::asm;
@@ -238,7 +238,7 @@ fn handle_not_present_page_fault(faulting_address: usize, write: bool, user: boo
 	let page_table = unsafe { &mut *(page_table_addr as *mut PageTable) };
 
 	// Allocate a new frame for the page
-	let pmm = unsafe { &mut *(PMM_ADDRESS as *mut PhysicalMemoryManager) };
+	let mut pmm = PMM.lock();
 	match pmm.allocate_frame() {
 		Ok(frame) => {
 			println_serial!("Allocated frame: {:#x}", frame);
