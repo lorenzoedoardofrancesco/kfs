@@ -22,7 +22,6 @@ pub static mut PAGE_TABLES_ADDR: u32 = 0;
 
 // Static references to the page directory and tables using AtomicPtr
 pub static mut PAGE_DIRECTORY: AtomicPtr<PageDirectory> = AtomicPtr::new(null_mut());
-pub static mut PAGE_TABLES: AtomicPtr<[PageTable; ENTRY_COUNT]> = AtomicPtr::new(null_mut());
 
 #[repr(C, align(4096))]
 pub struct PageDirectory {
@@ -120,5 +119,4 @@ pub unsafe fn init_page_directory() {
 			0x00000000 + PAGE_TABLE_SIZE as u32,
 			PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
 		);
-	//let page_tables = &mut *PAGE_TABLES.load(Ordering::Relaxed);
 }

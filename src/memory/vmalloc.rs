@@ -136,12 +136,12 @@ pub unsafe fn vmalloc(mut size: usize) -> Option<*mut u8> {
 	None
 }
 
-/// vfree() frees a memory zone allocated by vmalloc().
+/// kfree() frees a memory zone allocated by vmalloc().
 ///
 /// # Argument
 /// Valid pointer to the memory zone to free.
-pub unsafe fn vfree(vmalloc_address: *mut u8) {
-	log!(LogLevel::Info, "vfree() freeing address: {:p}", vmalloc_address);
+pub unsafe fn kfree(vmalloc_address: *mut u8) {
+	log!(LogLevel::Info, "kfree() freeing address: {:p}", vmalloc_address);
 	let header = (vmalloc_address as *mut VmallocHeader)
 		.offset(-1)
 		.as_mut()
@@ -220,7 +220,7 @@ pub unsafe fn vsize(vmalloc_address: *mut u8) -> usize {
 		return 0;
 	}
 
-	header.size() // - VMALLOC_HEADER_SIZE ???
+	header.size()
 }
 
 /// vbrk() changes the location of the kernel heap break, which defines the end of
@@ -307,7 +307,7 @@ pub fn vmalloc_test() {
 		vheap_init();
 
 		println_serial!("\n");
-		log!(LogLevel::Info, "\t\tTesting vmalloc() and vfree()\n");
+		log!(LogLevel::Info, "\t\tTesting vmalloc() and kfree()\n");
 
 		let mut ptrs: [*mut u8; MAX_PTRS] = [core::ptr::null_mut(); MAX_PTRS];
 		let mut ptr_count = 0;
@@ -322,7 +322,7 @@ pub fn vmalloc_test() {
 		print_vmalloc_info();
 
 		log!(LogLevel::Info, "Freeing the 2nd block and allocating a 350 bytes block\n which should be placed after the 4th block because of fragmentation\n");
-		vfree(ptrs[1]);
+		kfree(ptrs[1]);
 		let ptr = vmalloc(350).expect("Failed to allocate memory");
 		ptrs[1] = ptr;
 		print_vmalloc_info();
@@ -340,9 +340,9 @@ pub fn vmalloc_test() {
 		print_vmalloc_info();
 
 		log!(LogLevel::Info, "Freeing the 2nd, 3rd and 4th blocks, to test coalescing\n");
-		vfree(ptrs[4]);
-		vfree(ptrs[5]);
-		vfree(ptrs[2]);
+		kfree(ptrs[4]);
+		kfree(ptrs[5]);
+		kfree(ptrs[2]);
 		ptrs[5] = core::ptr::null_mut();
 		print_vmalloc_info();
 
@@ -361,7 +361,7 @@ pub fn vmalloc_test() {
 		log!(LogLevel::Info, "Freeing all blocks\n");
 		for i in 0..ptr_count {
 			if !ptrs[i].is_null() {
-				vfree(ptrs[i]);
+				kfree(ptrs[i]);
 			}
 		}
 		print_vmalloc_info();
@@ -376,5 +376,5 @@ pub fn vmalloc_test() {
 		// ptrs[0] = ptr;
 		// print_vmalloc_info();
 	}
-	log!(LogLevel::Info, "\t\tEnd of vmalloc() and vfree() test\n");
+	log!(LogLevel::Info, "\t\tEnd of vmalloc() and kfree() test\n");
 }

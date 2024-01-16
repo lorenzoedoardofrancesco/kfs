@@ -1,6 +1,5 @@
 use core::mem::size_of;
 
-use super::kmalloc::kernel_heap_init;
 use super::page_directory::init_page_directory;
 use super::page_directory::{PAGE_DIRECTORY_ADDR, PAGE_TABLES_ADDR, PAGE_TABLE_SIZE};
 use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag};

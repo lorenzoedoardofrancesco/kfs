@@ -159,7 +159,7 @@ pub fn read_multiboot_info(address: u32) {
 	let mut current_tag: *const MultibootTag = multiboot_info.tags.as_ptr();
 	let mut tag: &MultibootTag = unsafe { &*current_tag };
 
-	let mut meminfo: Option<&MultibootTagBasicMemInfo> = None;
+	let mut _meminfo: Option<&MultibootTagBasicMemInfo> = None;
 
 	while tag.tag_type != MULTIBOOT_TAG_TYPE_END {
 		//println_serial!("Tag {:#x} size: {:#x}", tag.tag_type, tag.size);
@@ -178,11 +178,11 @@ pub fn read_multiboot_info(address: u32) {
 				);
 			}
 			MULTIBOOT_TAG_TYPE_BASIC_MEMINFO => {
-				meminfo = Some(unsafe { &*(current_tag as *const MultibootTagBasicMemInfo) });
+				_meminfo = Some(unsafe { &*(current_tag as *const MultibootTagBasicMemInfo) });
 				println_serial!(
 					"      Mem lower: {}KB, Mem upper: {}KB",
-					meminfo.unwrap().mem_lower,
-					meminfo.unwrap().mem_upper
+					_meminfo.unwrap().mem_lower,
+					_meminfo.unwrap().mem_upper
 				);
 			}
 			MULTIBOOT_TAG_TYPE_BOOTDEV => {

@@ -4,17 +4,20 @@
 //! the initialization of the Programmable Interrupt Controller (PIC), definitions of interrupt handler functions,
 //! and utilities for enabling and disabling interrupts. The module plays a crucial role in the system's
 //! response to hardware and software interrupts.
-use crate::exceptions::keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER};
-use crate::exceptions::pic8259::ChainedPics;
-use crate::memory::page_directory::{
-	PageDirectory, PAGE_DIRECTORY, PAGE_DIRECTORY_ADDR, PAGE_SIZE, PAGE_TABLES, PAGE_TABLES_ADDR,
-	PAGE_TABLE_SIZE,
-};
-use crate::memory::page_table::PageTable;
-use crate::memory::page_table_entry::{PageTableEntry, PageTableFlags};
-use crate::memory::physical_memory_managment::{PhysicalMemoryManager, PMM};
 use crate::utils::debug::LogLevel;
 use crate::utils::io::inb;
+use crate::{
+	exceptions::{
+		keyboard::{BUFFER_HEAD, KEYBOARD_INTERRUPT_RECEIVED, SCANCODE_BUFFER},
+		pic8259::ChainedPics,
+	},
+	memory::{
+		page_directory::{PAGE_SIZE, PAGE_TABLES_ADDR},
+		page_table::PageTable,
+		page_table_entry::PageTableFlags,
+		physical_memory_managment::PMM,
+	},
+};
 use core::arch::asm;
 use core::sync::atomic::{AtomicU32, Ordering};
 use spin::Mutex;
@@ -168,14 +171,7 @@ pub extern "C" fn general_protection_fault(stack_frame: &mut InterruptStackFrame
 }
 
 #[no_mangle]
-pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame, error_code: u32) {
-	// log!(
-	// 	LogLevel::Info,
-	// 	"PAGE FAULT\n{:#x?}\nError Code: {:#x}",
-	// 	stack_frame,
-	// 	error_code
-	// );
-
+pub extern "C" fn page_fault(_stack_frame: &mut InterruptStackFrame, error_code: u32) {
 	let faulting_address: u32;
 	unsafe {
 		asm!("mov {}, cr2", out(reg) faulting_address, options(nostack, preserves_flags));
@@ -196,7 +192,7 @@ pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame, error_code: 
 
 	if !present {
 		log!(LogLevel::Info, "Page not present");
-		handle_not_present_page_fault(faulting_address as usize, write, user);
+		handle_not_present_page_fault(faulting_address as usize);
 	} else {
 		if write {
 			log!(LogLevel::Error, "Attempted to write to a read-only page");
@@ -225,7 +221,7 @@ pub extern "C" fn page_fault(stack_frame: &mut InterruptStackFrame, error_code: 
 	// Additional handling can be added here as required
 }
 
-fn handle_not_present_page_fault(faulting_address: usize, write: bool, user: bool) {
+fn handle_not_present_page_fault(faulting_address: usize) {
 	// Calculate the page directory index and page table index.
 	let pd_index = faulting_address >> 22;
 	let pt_index = (faulting_address >> 12) & 0x3FF;

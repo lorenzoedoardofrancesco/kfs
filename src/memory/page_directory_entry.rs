@@ -29,21 +29,10 @@ impl PageDirectoryEntry {
 		self.value = (page_table - HIGH_KERNEL_OFFSET) | flags.bits();
 	}
 
-	// Sets the flags for this directory entry
-	pub fn set_flags(&mut self, flags: PageDirectoryFlags) {
-		self.value = (self.value & PageDirectoryFlags::PAGE_TABLE.bits()) | flags.bits();
-	}
-
 	// Get the page table for this directory entry
 	pub fn get_page_table(&self) -> &mut PageTable {
 		let table_address = (self.value & PageDirectoryFlags::PAGE_TABLE.bits()) + HIGH_KERNEL_OFFSET;
 		print_serial!("Getting page table at address {:X}", table_address);
 		unsafe { &mut *(table_address as *mut PageTable) }
-	}
-
-	// Gets the flags from this directory entry
-	pub fn get_flags(&self) -> PageDirectoryFlags {
-		let flags = self.value & !PageDirectoryFlags::PAGE_TABLE.bits();
-		PageDirectoryFlags::from_bits_truncate(flags)
 	}
 }
