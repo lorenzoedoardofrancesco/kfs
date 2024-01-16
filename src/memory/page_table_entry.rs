@@ -39,16 +39,6 @@ impl PageTableEntry {
 		self.value = (self.value & PageTableFlags::FRAME.bits()) | flags.bits();
 	}
 
-	/// Adds the specified attribute flags to this entry.
-	pub fn add_attribute(&mut self, attribute: PageTableFlags) {
-		self.value |= attribute.bits();
-	}
-
-	/// Removes the specified attribute flags from this entry.
-	pub fn remove_attribute(&mut self, attribute: PageTableFlags) {
-		self.value &= !attribute.bits();
-	}
-
 	/// Allocates a new frame for this entry.
 	pub fn alloc_new(&mut self) {
 		// BIEN VERIFIER QUE CA MARCHE
@@ -64,16 +54,6 @@ impl PageTableEntry {
 			PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
 		);
 		print_serial!("Frame allocated at {:?}\n", frame.unwrap());
-	}
-
-	/// Returns true if the entry is present in memory.
-	pub fn is_present(&self) -> bool {
-		self.value & PageTableFlags::PRESENT.bits() != 0
-	}
-
-	/// Returns true if the entry is writable.
-	pub fn is_writable(&self) -> bool {
-		self.value & PageTableFlags::WRITABLE.bits() != 0
 	}
 
 	/// Returns the frame address for this entry.

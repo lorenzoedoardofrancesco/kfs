@@ -26,16 +26,6 @@ pub struct KmallocHeader {
 }
 
 impl KmallocHeader {
-	pub fn new(size: usize) -> KmallocHeader {
-		KmallocHeader {
-			prev: 0 as *mut KmallocHeader,
-			next: 0 as *mut KmallocHeader,
-			size: size as u32,
-			magic: KMALLOC_MAGIC,
-			used: USED,
-		}
-	}
-
 	pub fn new_header(
 		&mut self,
 		prev: *mut KmallocHeader,
@@ -119,6 +109,7 @@ pub unsafe fn kmalloc(mut size: usize) -> Option<*mut u8> {
 	let mut last_header = current_header;
 
 	while current_header < KMALLOC_BREAK as *mut KmallocHeader {
+        println_serial!("current_header: {:p}, KMALLOC_BREAK: {:p}", current_header, KMALLOC_BREAK);
 		if current_header.is_null() {
 			current_header = last_header.add(last_header.as_ref().unwrap().size() / 16);
 			(*current_header).new_header(last_header, core::ptr::null_mut(), PAGE_SIZE, FREE);
@@ -145,6 +136,10 @@ pub unsafe fn kmalloc(mut size: usize) -> Option<*mut u8> {
 			return Some(current_header.add(KMALLOC_HEADER_SIZE / 16) as *mut u8);
 		}
 		last_header = current_header;
+        println_serial!("miao current_header: {:X}, KMALLOC_BREAK: {:X}", current_header as usize + vheader.size() / 16, KMALLOC_BREAK as usize);
+        if current_header as usize + vheader.size() / 16 >= KMALLOC_BREAK as usize {
+            break;
+        }
 		current_header = vheader.next();
 	}
 
@@ -253,7 +248,7 @@ pub unsafe fn kbrk(increment: isize) {
 
 	if increment > 0 {
 		frame_number = (increment + 1) / PAGE_SIZE as isize + 1;
-		for i in 0..frame_number {
+		for _i in 0..frame_number {
 			if KMALLOC_BREAK == KMALLOC_END {
 				return;
 			}
@@ -263,7 +258,7 @@ pub unsafe fn kbrk(increment: isize) {
 		}
 	} else if increment < 0 {
 		frame_number = -(increment - 1) / PAGE_SIZE as isize - 1;
-		for i in 0..frame_number {
+		for _i in 0..frame_number {
 			if KMALLOC_BREAK == KMALLOC_START {
 				return;
 			}
@@ -319,7 +314,7 @@ fn print_kmalloc_info() {
 
 // Import your custom memory management module here
 
-const MAX_PTRS: usize = 10;
+const MAX_PTRS: usize = 20;
 
 pub fn kmalloc_test() {
 	unsafe {
@@ -355,7 +350,7 @@ pub fn kmalloc_test() {
 				break;
 			}
 			let size = (i - 4) * 50; // Smaller sizes
-			let ptr = kmalloc(size).expect("Failed to allocate memory");
+			let ptr: *mut u8 = kmalloc(size).expect("Failed to allocate memory");
 			ptrs[ptr_count] = ptr;
 			ptr_count += 1;
 		}
@@ -375,11 +370,35 @@ pub fn kmalloc_test() {
 		ptrs[2] = kmalloc(200).expect("Failed to allocate memory");
 		ptrs[4] = kmalloc(400).expect("Failed to allocate memory");
 		print_kmalloc_info();
+
+        log!(LogLevel::Info, "Allocating a 8KB block\n");
+        let ptr = kmalloc(8000);
+        assert!(ptr.is_none());
+        print_kmalloc_info();
+
  
         log!(LogLevel::Info, "Allocating a 4KB block\n");
-        let ptr = kmalloc(4000).expect("Failed to allocate memory");
-        ptrs[0] = ptr;
+        let ptr = kmalloc(4070).expect("Failed to allocate memory");
+        ptrs[11] = ptr;
         print_kmalloc_info();
+
+        log!(LogLevel::Info, "Allocating another 4 4KB block\n");
+        let ptr = kmalloc(4070).expect("Failed to allocate memory");
+        ptrs[7] = ptr;
+        let ptr = kmalloc(4070).expect("Failed to allocate memory");
+        ptrs[8] = ptr;
+        let ptr = kmalloc(4070).expect("Failed to allocate memory");
+        ptrs[9] = ptr;
+        let ptr = kmalloc(4070);
+        assert!(ptr.is_none());
+        print_kmalloc_info();
+
+        log!(LogLevel::Info, "Allocating a new frame and alloc 4KB block\n");
+        kbrk(1);
+        let ptr = kmalloc(4070).expect("Failed to allocate memory");
+        ptrs[10] = ptr;
+        print_kmalloc_info();
+
 
 		// log!(LogLevel::Info, "Adjusting KMALLOC_BREAK multiple times\n");
 		// kbrk(500); // Increment
@@ -388,7 +407,7 @@ pub fn kmalloc_test() {
 		// print_kmalloc_info(); // BIZZARRE A REGARDER LOG
 
 		log!(LogLevel::Info, "Freeing all blocks\n");
-		for i in 0..ptr_count {
+		for i in 0..20 {
 			if !ptrs[i].is_null() {
 				kfree(ptrs[i]);
 			}

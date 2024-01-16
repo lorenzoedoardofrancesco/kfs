@@ -22,15 +22,6 @@ impl PageTable {
 		let index = (virtual_address & 0x003FF000) >> 12;
 		&mut self.entries[index as usize]
 	}
-	
-
-	pub fn set_entry(&mut self, index: usize, frame_address: u32, flags: PageTableFlags) {
-		self.entries[index].set_frame_address(frame_address, flags);
-	}
-
-	pub fn set_flags_entry(&mut self, index: usize, flags: PageTableFlags) {
-		self.entries[index].set_flags(flags);
-	}
 
 	/// Maps the page table to the given physical address.
 	pub fn kernel_mapping(&mut self, mut physical_address: u32, flags: PageTableFlags) {

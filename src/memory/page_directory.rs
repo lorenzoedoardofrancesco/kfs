@@ -50,7 +50,7 @@ pub fn unmap_address(virtual_address: *mut u8) {
 	let page_directory: &mut PageDirectory =
 		unsafe { &mut *PAGE_DIRECTORY.load(Ordering::Relaxed) };
 	let page_table: &mut PageTable = page_directory.get_page_table(virtual_address as u32);
-	let mut page_table_entry: &PageTableEntry =
+	let page_table_entry: &PageTableEntry =
 		page_table.get_page_table_entry(virtual_address as u32);
 
 	PMM.lock().deallocate_frame(page_table_entry.frame());
