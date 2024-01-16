@@ -113,5 +113,4 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	prints::print_welcome_message();
 	memory::vmalloc::vmalloc_test();
 	memory::kmalloc::kmalloc_test();
-	PMM.lock().print_memory_map();
 }
