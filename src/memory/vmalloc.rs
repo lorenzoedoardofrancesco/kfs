@@ -26,16 +26,6 @@ pub struct VmallocHeader {
 }
 
 impl VmallocHeader {
-	pub fn new(size: usize) -> VmallocHeader {
-		VmallocHeader {
-			prev: 0 as *mut VmallocHeader,
-			next: 0 as *mut VmallocHeader,
-			size: size as u32,
-			magic: VMALLOC_MAGIC,
-			used: USED,
-		}
-	}
-
 	pub fn new_header(
 		&mut self,
 		prev: *mut VmallocHeader,
@@ -233,7 +223,7 @@ pub unsafe fn vbrk(increment: isize) {
 
 	if increment > 0 {
 		frame_number = (increment + 1) / PAGE_SIZE as isize + 1;
-		for i in 0..frame_number {
+		for _i in 0..frame_number {
 			if VMALLOC_BREAK == VMALLOC_END {
 				return;
 			}
@@ -243,7 +233,7 @@ pub unsafe fn vbrk(increment: isize) {
 		}
 	} else if increment < 0 {
 		frame_number = -(increment - 1) / PAGE_SIZE as isize - 1;
-		for i in 0..frame_number {
+		for _i in 0..frame_number {
 			if VMALLOC_BREAK == VMALLOC_START {
 				return;
 			}
@@ -336,6 +326,7 @@ pub fn vmalloc_test() {
 			let ptr = vmalloc(size).expect("Failed to allocate memory");
 			ptrs[ptr_count] = ptr;
 			ptr_count += 1;
+			println_serial!("\tSize of the allocated block: {}", vsize(ptr));
 		}
 		print_vmalloc_info();
 

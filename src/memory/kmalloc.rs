@@ -109,38 +109,36 @@ pub unsafe fn kmalloc(mut size: usize) -> Option<*mut u8> {
 	let mut last_header = current_header;
 
 	while current_header < KMALLOC_BREAK as *mut KmallocHeader {
-        println_serial!("current_header: {:p}, KMALLOC_BREAK: {:p}", current_header, KMALLOC_BREAK);
 		if current_header.is_null() {
 			current_header = last_header.add(last_header.as_ref().unwrap().size() / 16);
+			if current_header == KMALLOC_BREAK as *mut KmallocHeader {
+				break;
+			}
 			(*current_header).new_header(last_header, core::ptr::null_mut(), PAGE_SIZE, FREE);
 			last_header.as_mut().unwrap().next = current_header;
 			continue;
 		}
-		let vheader = current_header.as_mut().unwrap();
-		if vheader.used() == FREE && vheader.size() >= size {
-			if current_header.add(size / 16) <= KMALLOC_BREAK as *mut KmallocHeader {
+		let kheader = current_header.as_mut().unwrap();
+		if kheader.used() == FREE && kheader.size() >= size {
+			if current_header.add(size / 16) < KMALLOC_BREAK as *mut KmallocHeader {
 				let next_header = current_header.add(size / 16).as_mut().unwrap();
 				if next_header.magic() != KMALLOC_MAGIC && next_header.used() != USED {
 					next_header.new_header(
 						current_header,
-						vheader.next(),
-						vheader.size() - size,
+						kheader.next(),
+						kheader.size() - size,
 						FREE,
 					);
 				}
-                vheader.new_header(vheader.prev(), next_header, size, USED);
+                kheader.new_header(kheader.prev(), next_header, size, USED);
 			} else {
-                vheader.new_header(vheader.prev(), core::ptr::null_mut(), size, USED);
+                kheader.new_header(kheader.prev(), core::ptr::null_mut(), size, USED);
             }
 
 			return Some(current_header.add(KMALLOC_HEADER_SIZE / 16) as *mut u8);
 		}
 		last_header = current_header;
-        println_serial!("miao current_header: {:X}, KMALLOC_BREAK: {:X}", current_header as usize + vheader.size() / 16, KMALLOC_BREAK as usize);
-        if current_header as usize + vheader.size() / 16 >= KMALLOC_BREAK as usize {
-            break;
-        }
-		current_header = vheader.next();
+		current_header = kheader.next();
 	}
 
 	log!(LogLevel::Warning, "No more memory available");
@@ -281,8 +279,8 @@ pub unsafe fn kheap_init() {
 	);
 
 	kbrk((MAX_ALLOCATION_SIZE * 4) as isize);
-	let vheader = KMALLOC_START as *mut KmallocHeader;
-	vheader.as_mut().unwrap().new_header(
+	let kheader = KMALLOC_START as *mut KmallocHeader;
+	kheader.as_mut().unwrap().new_header(
 		core::ptr::null_mut(),
 		core::ptr::null_mut(),
 		MAX_ALLOCATION_SIZE,
@@ -353,9 +351,12 @@ pub fn kmalloc_test() {
 			let ptr: *mut u8 = kmalloc(size).expect("Failed to allocate memory");
 			ptrs[ptr_count] = ptr;
 			ptr_count += 1;
+
+			print_serial!("\tSize of the allocated block: {}\n", ksize(ptr));
 		}
 		print_kmalloc_info();
 
+		
 		log!(
 			LogLevel::Info,
 			"Freeing the 2nd, 3rd and 4th blocks, to test coalescing\n"
@@ -417,8 +418,11 @@ pub fn kmalloc_test() {
 
 		// log!(LogLevel::Info, "Allocating a 1MB block\n");
 		// let ptr = kmalloc(1024 * 1024).expect("Failed to allocate memory");
-		// ptrs[0] = ptr;
-		// print_kmalloc_info();
+		kbrk(- 4096 * 7);
+		let ptr = kmalloc(4070);
+		assert!(ptr.is_none());
+
+		print_kmalloc_info();
 	}
 	log!(LogLevel::Info, "\t\tEnd of kmalloc() and kfree() test\n");
 }

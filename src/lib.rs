@@ -111,6 +111,6 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	unsafe { memory::page_directory::init_page_directory() };
 	memory::page_directory::enable_paging();
 	prints::print_welcome_message();
-	//memory::vmalloc::vmalloc_test();
+	memory::vmalloc::vmalloc_test();
 	memory::kmalloc::kmalloc_test();
 }

@@ -258,6 +258,7 @@ impl PhysicalMemoryManager {
 		false
 	}
 
+	#[allow(dead_code)]
 	pub fn print_memory_map(&self) {
 		println_serial!("Memory Map:");
 		for index in 0..(self.memory_map_size as usize) {
