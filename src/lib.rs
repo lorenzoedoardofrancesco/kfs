@@ -59,7 +59,7 @@ use crate::shell::prints;
 use boot::multiboot;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
-use memory::physical_memory_managment::{HIGH_KERNEL_OFFSET, PMM};
+use memory::physical_memory_managment::HIGH_KERNEL_OFFSET;
 use structures::{gdt, idt};
 use utils::{debug, librs::hlt};
 use vga::parrot::animate_parrot;
