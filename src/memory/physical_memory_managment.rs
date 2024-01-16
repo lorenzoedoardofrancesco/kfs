@@ -1,4 +1,4 @@
-use core::mem::size_of;
+use core::{mem::size_of, ptr::addr_of};
 
 use super::page_directory::{PAGE_DIRECTORY_ADDR, PAGE_TABLES_ADDR, PAGE_TABLE_SIZE};
 use crate::boot::multiboot::{MultibootMemoryMapEntry, MultibootMemoryMapTag};
@@ -73,7 +73,7 @@ impl PhysicalMemoryManager {
 
 		println_serial!("Initializing Physical Memory Manager");
 		unsafe {
-			MEMORY_MAP = &_kernel_end as *const u8 as u32;
+			MEMORY_MAP = addr_of!(_kernel_end) as *const u8 as u32;
 			PMM_ADDRESS = align_up(MEMORY_MAP + memory_map_size);
 			PAGE_DIRECTORY_ADDR = align_up(PMM_ADDRESS + size_of::<PhysicalMemoryManager>() as u32);
 			PAGE_TABLES_ADDR = PAGE_DIRECTORY_ADDR + 0x1000;
@@ -106,7 +106,7 @@ impl PhysicalMemoryManager {
 		
 		self.memory_map = unsafe {
 			core::slice::from_raw_parts_mut(
-				&_kernel_end as *const u8 as *mut u32,
+				addr_of!(_kernel_end) as *const u8 as *mut u32,
 				self.memory_map_size as usize,
 			)
 		};

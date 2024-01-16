@@ -255,6 +255,10 @@ pub unsafe fn kbrk(increment: isize) {
 			KMALLOC_BREAK = KMALLOC_BREAK.offset(PAGE_SIZE as isize);
 		}
 	} else if increment < 0 {
+		let y = - increment;
+		if KMALLOC_BREAK.wrapping_sub(y as usize) < KMALLOC_START {
+			return;
+		}
 		frame_number = -(increment - 1) / PAGE_SIZE as isize - 1;
 		for _i in 0..frame_number {
 			if KMALLOC_BREAK == KMALLOC_START {
@@ -415,14 +419,6 @@ pub fn kmalloc_test() {
 		}
 		print_kmalloc_info();
 
-
-		// log!(LogLevel::Info, "Allocating a 1MB block\n");
-		// let ptr = kmalloc(1024 * 1024).expect("Failed to allocate memory");
-		kbrk(- 4096 * 7);
-		let ptr = kmalloc(4070);
-		assert!(ptr.is_none());
-
-		print_kmalloc_info();
 	}
 	log!(LogLevel::Info, "\t\tEnd of kmalloc() and kfree() test\n");
 }

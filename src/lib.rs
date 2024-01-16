@@ -59,7 +59,7 @@ use crate::shell::prints;
 use boot::multiboot;
 use core::panic::PanicInfo;
 use exceptions::{interrupts, keyboard::process_keyboard_input, panic::handle_panic};
-use memory::physical_memory_managment::HIGH_KERNEL_OFFSET;
+use memory::physical_memory_managment::{HIGH_KERNEL_OFFSET, PMM};
 use structures::{gdt, idt};
 use utils::{debug, librs::hlt};
 use vga::parrot::animate_parrot;
@@ -113,4 +113,5 @@ fn init(multiboot_magic: u32, multiboot_addr: u32) {
 	prints::print_welcome_message();
 	memory::vmalloc::vmalloc_test();
 	memory::kmalloc::kmalloc_test();
+	PMM.lock().print_memory_map();
 }
