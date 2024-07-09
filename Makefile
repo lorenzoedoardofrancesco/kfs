@@ -55,15 +55,9 @@ docker-start:
 		echo "$(GREEN)Docker container $(CONTAINER_NAME) is already running.$(WHITE)"; \
 	fi
 
-transfer-and-build:
+transfer-and-build: docker-volume
 	$(eval MOUNTPOINT=$(shell docker volume inspect --format '{{ .Mountpoint }}' $(VOLUME_NAME)))
-	@cp -r .cargo $(MOUNTPOINT)/
-	@cp -r isofiles $(MOUNTPOINT)/
-	@cp -r src $(MOUNTPOINT)/
-	@cp Cargo.toml $(MOUNTPOINT)/
-	@cp i386-unknown-none.json $(MOUNTPOINT)/
-	@cp linker.ld $(MOUNTPOINT)/
-	@cp Makefile_docker $(MOUNTPOINT)/Makefile
+	@docker run --rm -v $(MOUNTPOINT):/mnt -v $(PWD):/host alpine sh -c "cp -r /host/.cargo /mnt/; cp -r /host/isofiles /mnt/; cp -r /host/src /mnt/; cp /host/Cargo.toml /mnt/; cp /host/i386-unknown-none.json /mnt/; cp /host/linker.ld /mnt/; cp /host/Makefile_docker /mnt/Makefile"
 	@echo "$(YELLOW)\n--- Building KFS ---\n$(WHITE)"
 	@if ! docker exec -t $(CONTAINER_NAME) make; then \
 		echo "$(RED)\n--- Error in building KFS ---\n$(WHITE)"; \
@@ -71,7 +65,7 @@ transfer-and-build:
 		exit 1; \
 	fi
 	@echo "$(GREEN)\n--- Build finished ---\n$(WHITE)"
-	@cp $(MOUNTPOINT)/$(ISO_FILE) $(ISO_FILE)
+	@docker run --rm -v $(MOUNTPOINT):/mnt -v $(PWD):/host alpine sh -c "cp /mnt/$(ISO_FILE) /host/$(ISO_FILE) && chown $(shell id -u):$(shell id -g) /host/$(ISO_FILE)"
 
 check-checksums:
 	@echo "\nChecking for file changes..."
